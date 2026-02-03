@@ -1,0 +1,5 @@
+{
+  "name": "La cave des Peress",
+  "description": "A comprehensive management tool for wine merchants. Features include inventory management by domain with pricing coefficients, quote generation, stock synchronization, and a financial accounting module for tracking invoices and balance sheets.",
+  "requestFramePermissions": []
+}

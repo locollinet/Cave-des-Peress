@@ -1,0 +1,84 @@
+
+import React from 'react';
+import { LayoutDashboard, Wine, FileText, ShoppingCart, BookOpen, Settings, Users, Globe, PackagePlus, LineChart, ScanBarcode, Landmark, Receipt } from 'lucide-react';
+import { DEFAULT_LOGO_URL } from '../utils';
+
+// Fixed: Changed prop from children to title to resolve TS error
+const SectionTitle = ({ title }: { title: string }) => (
+  <div className="px-4 mt-6 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 font-sans">
+    {title}
+  </div>
+);
+
+const Sidebar = ({ currentView, onViewChange }: { currentView: string, onViewChange: (view: string) => void }) => {
+  const navButtonClass = (view: string) => 
+    `w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-sm ${currentView === view ? 'bg-red-900 text-white shadow-md shadow-red-950/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`;
+
+  return (
+    <aside className="w-64 bg-slate-900 text-white flex flex-col fixed h-full z-20 print:hidden border-r border-slate-800">
+      <div className="p-6 border-b border-slate-800 flex flex-col items-center gap-3 shrink-0">
+        <div className="w-full flex justify-center">
+           <div className="p-3 bg-white rounded-xl shadow-lg shadow-black/20 w-full flex items-center justify-center">
+              <img src={DEFAULT_LOGO_URL} alt="Cave des Peress" className="h-12 w-auto object-contain" />
+           </div>
+        </div>
+      </div>
+      
+      <nav className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar">
+        
+        <SectionTitle title="Pilotage" />
+        <button onClick={() => onViewChange('dashboard')} className={navButtonClass('dashboard')}>
+          <LayoutDashboard size={18} /><span className="font-medium">Vue d'ensemble</span>
+        </button>
+        <button onClick={() => onViewChange('projection')} className={navButtonClass('projection')}>
+          <LineChart size={18} /><span className="font-medium">Stratégie & Analyse</span>
+        </button>
+
+        <SectionTitle title="Commerce & Clients" />
+        <button onClick={() => onViewChange('sales')} className={navButtonClass('sales')}>
+          <ShoppingCart size={18} /><span className="font-medium">Point de Vente</span>
+        </button>
+        <button onClick={() => onViewChange('clients')} className={navButtonClass('clients')}>
+          <Users size={18} /><span className="font-medium">Clients & Stocks</span>
+        </button>
+
+        <SectionTitle title="Stocks & Appro" />
+        <button onClick={() => onViewChange('inventory')} className={navButtonClass('inventory')}>
+          <Wine size={18} /><span className="font-medium">Gestion du Stock</span>
+        </button>
+        <button onClick={() => onViewChange('purchases')} className={navButtonClass('purchases')}>
+          <PackagePlus size={18} /><span className="font-medium">Achats & Réception</span>
+        </button>
+
+        <SectionTitle title="Finance" />
+        <button onClick={() => onViewChange('accounting')} className={navButtonClass('accounting')}>
+          <FileText size={18} /><span className="font-medium">Facturation</span>
+        </button>
+        <button onClick={() => onViewChange('general_accounting')} className={navButtonClass('general_accounting')}>
+          <Landmark size={18} /><span className="font-medium">Trésorerie & Frais</span>
+        </button>
+
+        <SectionTitle title="Catalogue" />
+        <button onClick={() => onViewChange('domains')} className={navButtonClass('domains')}>
+          <Globe size={18} /><span className="font-medium">Domaines</span>
+        </button>
+        <button onClick={() => onViewChange('wine_menu')} className={navButtonClass('wine_menu')}>
+          <BookOpen size={18} /><span className="font-medium">Carte des Vins</span>
+        </button>
+
+        <SectionTitle title="Outils" />
+        <button onClick={() => onViewChange('mobile_inventory')} className={navButtonClass('mobile_inventory')}>
+          <ScanBarcode size={18} /><span className="font-medium">Scanner Mobile</span>
+        </button>
+      </nav>
+      
+      <div className="p-4 border-t border-slate-800 space-y-2 shrink-0 bg-slate-900">
+        <button onClick={() => onViewChange('settings')} className={navButtonClass('settings')}>
+          <Settings size={18} /><span className="font-medium">Paramètres</span>
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;
