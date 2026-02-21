@@ -1,8 +1,107 @@
 
-import { Wine, WineColor, Domain, Invoice, Client } from './types';
+import { Wine, WineColor, Domain, Invoice, Client, CartItem } from './types';
 
-// Logo La Cave des Peress encodé en Base64 pour être stocké directement dans le code (fonctionne hors ligne)
-export const DEFAULT_LOGO_URL = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgMTUwIj48ZGVmcz48c3R5bGU+LnRleHR7Zm9udC1mYW1pbHk6J0hlbHZldGljYSBOZXVlJyxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZn0ucmVke2ZpbGw6IzdmMWQxZDt9LmRhcmt7ZmlsbDojMWYyOTM3O308L3N0eWxlPjwvZGVmcz48cGF0aCBkPSJNMjAgNzUgUTMwIDYwIDQwIDc1IFQ2MCA3NSBUODAgNzUgTDEwNSA3NSBNMTA1IDQ1IEwxMDUgMTA1IiBzdHJva2U9IiM3ZjFkMWQiIHN0cm9rZS13aWR0aD0iNiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHRleHQgeD0iMTIwIiB5PSI0NSIgY2xhc3M9InRleHQgZGFyayIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9IjMwMCI+TGE8L3RleHQ+PHRleHQgeD0iMTIwIiB5PSI3OCIgY2xhc3M9InRleHQgZGFyayIgZm9udC1zaXplPSI0MiIgZm9udC13ZWlnaHQ9IjgwMCI+Y2F2ZTwvdGV4dD48dGV4dCB4PSIyMjUiIHk9Ijc4IiBjbGFzcz0idGV4dCBkYXJrIiBmb250LXNpemU9IjI0IiBmb250LXdlaWdodD0iMzAwIj5kZXM8L3RleHQ+PHRleHQgeD0iMTIwIiB5PSIxMTUiIGNsYXNzPSJ0ZXh0IHJlZCIgZm9udC1zaXplPSI0MiIgZm9udC13ZWlnaHQ9IjgwMCIgbGV0dGVyLXNwYWNpbmc9IjEiPlBFUkVTUzwvdGV4dD48L3N2Zz4=";
+// Logo La Cave des Peress vectorisé (SVG) - Reproduction fidèle
+export const DEFAULT_LOGO_URL = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMTAwIj48ZGVmcz48c3R5bGU+LnJlZHtmaWxsOiM3ZjFkMWQ7fS5ncmVye2ZpbGw6IzMzMzt9LmxpZ2h0e2ZpbGw6Izg4ODt9PC9zdHlsZT48L2RlZnM+PCEtLSBJY29uZSBUaXJlLWJvdWNob24gLS0+PHBhdGggZD0iTTUwIDIwIEw1MCA4MCIgc3Ryb2tlPSIjN2YxZDFkIiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMCA1MCBRMjAgMzUgMzAgNTAgVDUwIDUwIiBmaWxsPSJub25lIiBzdHJva2U9IiM3ZjFkMWQiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PCEtLSBUZXh0ZSAtLT48dGV4dCB4PSI3MCIgeT0iMjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE4IiBjbGFzcz0ibGlnaHQiPkxhPC90ZXh0Pjx0ZXh0IHg9IjcwIiB5PSI1NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjMzIiBjbGFzcz0iZ3JleSI+Y2F2ZTwvdGV4dD48dGV4dCB4PSIxNTUiIHk9IjU1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgY2xhc3M9ImxpZ2h0Ij5kZXM8L3RleHQ+PHRleHQgeD0iNzAiIHk9Ijg1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iMzMiIGNsYXNzPSJyZWQiIGxldHRlci1zcGFjaW5nPSIxIj5QRVJFU1M8L3RleHQ+PC9zdmc+";
+
+/**
+ * Arrondi sécurisé à 2 décimales pour éviter les erreurs de virgule flottante JS.
+ */
+export const roundCurrency = (value: number): number => {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+};
+
+/**
+ * Moteur de calcul centralisé pour les factures avec gestion Multi-TVA et Remise.
+ */
+export const calculateInvoiceTotals = (items: CartItem[], shippingCost: number = 0, discount: number = 0) => {
+  // 1. Calculer les bases HT par taux de TVA
+  const breakdown: Record<number, { base: number, amount: number }> = {};
+  let rawTotalHT = 0;
+
+  // Items
+  items.forEach(item => {
+    const price = item.isGift ? 0 : item.sellingPriceHT;
+    const lineTotalHT = roundCurrency(price * item.quantity);
+    const rate = item.vatRate !== undefined ? item.vatRate : 20.0;
+
+    if (!breakdown[rate]) breakdown[rate] = { base: 0, amount: 0 };
+    breakdown[rate].base += lineTotalHT;
+    
+    rawTotalHT += lineTotalHT;
+  });
+
+  // Shipping (Considéré comme du service standard à 20% ou taux max, ici on fixe à 20% par défaut)
+  if (shippingCost > 0) {
+      const shippingRate = 20;
+      if (!breakdown[shippingRate]) breakdown[shippingRate] = { base: 0, amount: 0 };
+      breakdown[shippingRate].base += shippingCost;
+      rawTotalHT += shippingCost;
+  }
+
+  // 2. Appliquer la remise (Discount)
+  // La remise réduit la base imposable. On calcule un ratio de réduction.
+  // Ratio = (TotalHT_Avant - Remise) / TotalHT_Avant
+  
+  let finalTotalHT = 0;
+  let finalTotalTVA = 0;
+  
+  // Protection division par zéro
+  const discountRatio = rawTotalHT > 0 ? (rawTotalHT - discount) / rawTotalHT : 1;
+  const safeDiscountRatio = Math.max(0, discountRatio); // Pas de ratio négatif
+
+  // 3. Recalculer les bases et TVA par taux après remise
+  const finalBreakdown: Record<string, { base: number, amount: number }> = {};
+
+  Object.keys(breakdown).forEach(rateStr => {
+      const rate = parseFloat(rateStr);
+      const originalBase = breakdown[rate].base;
+      
+      // La base réduite par le ratio de remise
+      const discountedBase = roundCurrency(originalBase * safeDiscountRatio);
+      
+      // La TVA sur cette base réduite
+      const tvaAmount = roundCurrency(discountedBase * (rate / 100));
+
+      finalBreakdown[rateStr] = {
+          base: discountedBase,
+          amount: tvaAmount
+      };
+
+      finalTotalHT += discountedBase;
+      finalTotalTVA += tvaAmount;
+  });
+
+  // Ajustement pour correspondre exactement au Total HT affiché (Raw - Discount) pour éviter les écarts d'arrondi
+  // On force le Total HT final à être exactement (TotalBrut + Port - Remise)
+  const targetTotalHT = Math.max(0, roundCurrency(rawTotalHT - discount));
+  
+  // S'il y a un petit écart d'arrondi sur la somme des bases, on l'absorbe sur le taux majoritaire (souvent 20%)
+  if (finalTotalHT !== targetTotalHT && finalTotalHT > 0) {
+      const diff = roundCurrency(targetTotalHT - finalTotalHT);
+      // On cherche le taux à 20% ou le premier taux dispo
+      const targetRate = finalBreakdown['20'] ? '20' : Object.keys(finalBreakdown)[0];
+      if (targetRate) {
+          finalBreakdown[targetRate].base = roundCurrency(finalBreakdown[targetRate].base + diff);
+          // On recalcule la TVA de cette ligne pour être précis
+          const newTva = roundCurrency(finalBreakdown[targetRate].base * (parseFloat(targetRate) / 100));
+          const tvaDiff = newTva - finalBreakdown[targetRate].amount;
+          finalBreakdown[targetRate].amount = newTva;
+          finalTotalTVA = roundCurrency(finalTotalTVA + tvaDiff);
+          finalTotalHT = targetTotalHT;
+      }
+  }
+
+  const totalTTC = roundCurrency(finalTotalHT + finalTotalTVA);
+
+  return {
+    totalHT: finalTotalHT,
+    shippingCost: roundCurrency(shippingCost),
+    totalTVA: finalTotalTVA,
+    totalTTC,
+    vatBreakdown: finalBreakdown
+  };
+};
 
 export const formatCurrency = (value: number) => 
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
@@ -18,14 +117,19 @@ export const getColorBadgeClass = (color: WineColor) => {
   }
 };
 
+export const getSmartCoefficient = (buyingPrice: number): number => {
+  return buyingPrice < 70 ? 1.2 : 1.1;
+};
+
 export const getSellingPrice = (wine: Wine, domain?: Domain) => {
   if (wine.sellingPriceHT && wine.sellingPriceHT > 0) {
     return wine.sellingPriceHT;
   }
   if (wine.coefficient && wine.coefficient > 0) {
-    return wine.buyingPriceHT * wine.coefficient;
+    return Math.ceil(wine.buyingPriceHT * wine.coefficient);
   }
-  return wine.buyingPriceHT * (domain?.coefficient || 1.2);
+  const baseCoef = domain?.coefficient || getSmartCoefficient(wine.buyingPriceHT);
+  return Math.ceil(wine.buyingPriceHT * baseCoef);
 };
 
 export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: string) => {
@@ -35,7 +139,6 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
     return;
   }
 
-  // LOGIC: Retrieve address from client DB if invoice snapshot is empty
   let displayAddress = invoice.clientAddress;
   if (!displayAddress || displayAddress.trim() === '') {
       const client = clients.find(c => c.id === invoice.clientId) || clients.find(c => c.name.toLowerCase() === invoice.clientName.toLowerCase());
@@ -44,9 +147,17 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
       }
   }
 
-  const title = invoice.status === 'ProForma' ? 'Pro Forma' : 'Facture';
-  // Use custom logo from settings, or fallback to the hardcoded default
-  const logoUrl = customLogo || DEFAULT_LOGO_URL;
+  const title = invoice.status === 'ProForma' ? 'Devis / Pro Forma' : 'Facture';
+  const logoUrl = customLogo && customLogo.length > 50 ? customLogo : DEFAULT_LOGO_URL;
+
+  // Calculs avec la nouvelle logique
+  const { totalHT, totalTVA, totalTTC, vatBreakdown, shippingCost } = calculateInvoiceTotals(
+      invoice.items, 
+      invoice.shippingCost || 0, 
+      invoice.discount || 0
+  );
+
+  const hasMultipleVat = Object.keys(vatBreakdown).length > 0;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -57,57 +168,100 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
           @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
           @page { margin: 0; size: A4; }
           body { font-family: 'Montserrat', sans-serif; font-size: 12px; line-height: 1.5; color: #1f2937; background: white; margin: 0; padding: 0; -webkit-print-color-adjust: exact; }
-          .page-container { padding: 40px 50px; max-width: 210mm; margin: 0 auto; min-height: 297mm; position: relative; box-sizing: border-box; }
+          
+          /* LAYOUT PRINCIPAL FLEXBOX pour éviter les superpositions */
+          .page-container { 
+              padding: 40px 50px; 
+              max-width: 210mm; 
+              margin: 0 auto; 
+              min-height: 297mm; /* Hauteur A4 */
+              display: flex;
+              flex-direction: column;
+              box-sizing: border-box;
+              position: relative;
+          }
+
           header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 60px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb; }
-          .brand-section { display: flex; flex-direction: column; gap: 15px; }
-          .logo-img { height: 80px; width: auto; object-fit: contain; margin-left: -10px; max-width: 200px; }
+          .brand-section { display: flex; flex-direction: column; gap: 15px; width: 50%; }
+          .logo-container { width: 100%; max-width: 300px; height: 100px; display: flex; align-items: center; overflow: visible; }
+          .logo-img { max-width: 100%; max-height: 100%; object-fit: contain; object-position: left center; }
           .company-details { font-size: 11px; color: #4b5563; }
-          .document-info { text-align: right; }
+          .document-info { text-align: right; width: 45%; }
           .doc-title { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 700; color: #111; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
           .doc-number { font-size: 14px; color: #6b7280; margin-top: 5px; }
           .meta-table { margin-top: 15px; margin-left: auto; border-collapse: collapse; }
           .meta-table td { padding: 2px 0 2px 15px; text-align: right; font-size: 12px; }
           .meta-label { color: #6b7280; }
           .meta-value { font-weight: 600; color: #111; }
+          
           .address-section { display: flex; justify-content: flex-end; margin-bottom: 50px; }
           .client-box { width: 45%; padding: 0; }
           .client-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; display: inline-block; }
           .client-name { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700; color: #111; margin-bottom: 5px; }
           .client-address { font-size: 13px; color: #4b5563; white-space: pre-line; }
+          
+          .items-section { flex: 1; /* Pousse le footer vers le bas */ }
           .items-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
           .items-table th { text-align: left; padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; border-bottom: 2px solid #111; font-weight: 600; }
           .items-table td { padding: 14px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 12px; }
           .items-table tr:last-child td { border-bottom: 1px solid #111; }
-          .col-desc { width: 50%; }
+          
+          .col-desc { width: 45%; }
+          .col-tva { width: 5%; text-align: center; font-size: 10px; color: #6b7280; }
           .col-qty { text-align: center; width: 10%; }
           .col-price { text-align: right; width: 20%; }
           .col-total { text-align: right; width: 20%; font-weight: 600; }
           .item-name { font-weight: 600; color: #111; display: block; }
           .item-meta { color: #6b7280; font-size: 11px; margin-top: 2px; }
-          .footer-section { display: flex; justify-content: space-between; align-items: flex-start; }
+          
+          /* Footer Section qui contient Banque + Totaux */
+          .footer-section { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: flex-start; 
+              margin-top: 20px;
+              break-inside: avoid; /* Évite de couper le bloc */
+          }
           .bank-details { width: 45%; padding: 15px; background-color: #f9fafb; border-radius: 4px; font-size: 11px; color: #4b5563; }
           .rib-warning { color: #dc2626; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 8px; letter-spacing: 0.5px; }
-          .totals-box { width: 40%; }
+          .totals-box { width: 45%; }
           .total-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
           .total-row.final { border-bottom: none; border-top: 2px solid #111; margin-top: 10px; padding-top: 15px; }
           .total-label { color: #6b7280; }
           .total-value { font-weight: 600; color: #111; }
           .final .total-label { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 700; color: #111; }
           .final .total-value { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 700; color: #111; }
-          .legal-footer { position: absolute; bottom: 40px; left: 50px; right: 50px; text-align: center; font-size: 9px; color: #9ca3af; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+          
+          /* Legal Footer en bas du conteneur Flex */
+          .legal-footer { 
+              margin-top: auto; /* Pousse tout en bas */
+              padding-top: 30px; 
+              text-align: center; 
+              font-size: 9px; 
+              color: #9ca3af; 
+              border-top: 1px solid #e5e7eb; 
+          }
+          
           .stamp { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); font-size: 80px; font-weight: 700; text-transform: uppercase; opacity: 0.15; z-index: 0; pointer-events: none; border: 5px solid; padding: 10px 40px; }
           .stamp-paid { color: #059669; border-color: #059669; }
           .stamp-cancelled { color: #dc2626; border-color: #dc2626; }
+          
+          .vat-table { width: 100%; margin-top: 15px; font-size: 10px; border-collapse: collapse; }
+          .vat-table th { text-align: right; color: #6b7280; font-weight: normal; border-bottom: 1px solid #eee; padding: 2px 0; }
+          .vat-table td { text-align: right; color: #4b5563; padding: 2px 0; }
         </style>
       </head>
       <body>
         <div class="page-container">
           ${invoice.status === 'Paid' ? '<div class="stamp stamp-paid">PAYÉE</div>' : ''}
           ${invoice.status === 'Cancelled' ? '<div class="stamp stamp-cancelled">ANNULÉE</div>' : ''}
+          
           <header>
             <div class="brand-section">
-              <img src="${logoUrl}" alt="La Cave des Peress" class="logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
-              <h1 style="display:none; font-family: 'Cormorant Garamond', serif; font-size: 28px; margin: 0; color: #7f1d1d;">La Cave des Peress</h1>
+              <div class="logo-container">
+                 <img src="${logoUrl}" alt="La Cave des Peress" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                 <h1 style="display:none; font-family: 'Cormorant Garamond', serif; font-size: 28px; margin: 0; color: #7f1d1d;">La Cave des Peress</h1>
+              </div>
               <div class="company-details"><strong>La Cave des Peress</strong><br>3 Rue du monument<br>21190 Puligny Montrachet<br>France<br><br>Tél : +33 6 10 84 79 02<br>Email : aurelio@cavedesperess.fr</div>
             </div>
             <div class="document-info">
@@ -120,6 +274,7 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
               </table>
             </div>
           </header>
+
           <div class="address-section">
             <div class="client-box">
               <span class="client-label">Adresse de facturation</span>
@@ -127,25 +282,32 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
               <div class="client-address">${displayAddress || ''}</div> 
             </div>
           </div>
-          <table class="items-table">
-            <thead>
-              <tr><th class="col-desc">Désignation</th><th class="col-qty">Qté</th><th class="col-price">Prix Unit. HT</th><th class="col-total">Total HT</th></tr>
-            </thead>
-            <tbody>
-              ${invoice.items.map(item => `
-                <tr>
-                  <td>
-                    <span class="item-name">${item.name} ${item.format && item.format !== 'Bouteille (75cl)' ? `(${item.format})` : ''}</span>
-                    ${item.isService ? '' : item.vintage || item.color ? `<div class="item-meta">${item.color || ''} ${item.vintage ? ' • ' + item.vintage : ''}</div>` : ''}
-                  </td>
-                  <td class="col-qty">${item.quantity}</td>
-                  <td class="col-price">${item.isGift ? 'Offert' : formatCurrency(item.sellingPriceHT).replace('€', '') + ' €'}</td>
-                  <td class="col-total">${item.isGift ? 'Offert' : formatCurrency(item.sellingPriceHT * item.quantity).replace('€', '') + ' €'}</td>
-                </tr>
-              `).join('')}
-               ${invoice.items.length < 5 ? Array.from({ length: 5 - invoice.items.length }).map(() => `<tr><td style="color: transparent;">.</td><td></td><td></td><td></td></tr>`).join('') : ''}
-            </tbody>
-          </table>
+
+          <div class="items-section">
+            <table class="items-table">
+              <thead>
+                <tr><th class="col-desc">Désignation</th><th class="col-tva">TVA</th><th class="col-qty">Qté</th><th class="col-price">Prix Unit. HT</th><th class="col-total">Total HT</th></tr>
+              </thead>
+              <tbody>
+                ${invoice.items.map(item => {
+                   const lineTotal = roundCurrency(item.sellingPriceHT * item.quantity);
+                   const vatRate = item.vatRate !== undefined ? item.vatRate : 20;
+                   return `
+                  <tr>
+                    <td>
+                      <span class="item-name">${item.name} ${item.format && item.format !== 'Bouteille (75cl)' ? `(${item.format})` : ''}</span>
+                      ${item.isService ? '' : item.vintage || item.color ? `<div class="item-meta">${item.color || ''} ${item.vintage ? ' • ' + item.vintage : ''}</div>` : ''}
+                    </td>
+                    <td class="col-tva">${vatRate}%</td>
+                    <td class="col-qty">${item.quantity}</td>
+                    <td class="col-price">${item.isGift ? 'Offert' : formatCurrency(item.sellingPriceHT).replace('€', '') + ' €'}</td>
+                    <td class="col-total">${item.isGift ? 'Offert' : formatCurrency(lineTotal).replace('€', '') + ' €'}</td>
+                  </tr>
+                `}).join('')}
+              </tbody>
+            </table>
+          </div>
+
           <div class="footer-section">
             <div class="bank-details">
               ${!invoice.paymentDate ? `
@@ -158,14 +320,27 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
                 </div>
               ` : `<div style="color: #059669; font-weight: 600;">✓ Règlement effectué par ${invoice.paymentMethod || 'virement'}.<br>Merci de votre confiance.</div>`}
             </div>
+            
             <div class="totals-box">
-              <div class="total-row"><span class="total-label">Total HT</span><span class="total-value">${formatCurrency(invoice.totalHT)}</span></div>
-              <div class="total-row"><span class="total-label">Frais de port HT</span><span class="total-value">${formatCurrency(invoice.shippingCost || 0)}</span></div>
-              <div class="total-row"><span class="total-label">TVA (20%)</span><span class="total-value">${formatCurrency(invoice.totalTVA)}</span></div>
-              <div class="total-row final"><span class="total-label">Net à Payer</span><span class="total-value">${formatCurrency(invoice.totalTTC)}</span></div>
+              <div class="total-row"><span class="total-label">Total HT</span><span class="total-value">${formatCurrency(totalHT)}</span></div>
+              ${shippingCost > 0 ? `<div class="total-row"><span class="total-label">Frais de port HT</span><span class="total-value">${formatCurrency(shippingCost)}</span></div>` : ''}
+              <div class="total-row"><span class="total-label">Total TVA</span><span class="total-value">${formatCurrency(totalTVA)}</span></div>
+              <div class="total-row final"><span class="total-label">Net à Payer</span><span class="total-value">${formatCurrency(totalTTC)}</span></div>
+              
+              ${hasMultipleVat ? `
+                <table class="vat-table">
+                    <tr><th>Taux</th><th>Base HT</th><th>Montant TVA</th></tr>
+                    ${Object.entries(vatBreakdown).sort((a,b) => parseFloat(b[0]) - parseFloat(a[0])).map(([rate, data]) => `
+                        <tr><td>${rate}%</td><td>${formatCurrency(data.base)}</td><td>${formatCurrency(data.amount)}</td></tr>
+                    `).join('')}
+                </table>
+              ` : ''}
             </div>
           </div>
-          <div class="legal-footer">La Cave des Peress — EURL au capital de 5 000 € — 3 Rue du monument 21190 Puligny Montrachet<br>SIREN 751 886 649 — RCS Dijon — TVA Intracommunautaire : FR 37 751886649</div>
+
+          <div class="legal-footer">
+             La Cave des Peress — EURL au capital de 5 000 € — 3 Rue du monument 21190 Puligny Montrachet<br>SIREN 751 886 649 — RCS Dijon — TVA Intracommunautaire : FR 37 751886649
+          </div>
         </div>
         <script>window.onload = function() { window.print(); }</script>
       </body>
@@ -182,10 +357,7 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
     return;
   }
   
-  // Logic to group wines by effective region (Wine override > Domain region)
   const grouped: Record<string, { domain: Domain, wines: Wine[] }[]> = {};
-  
-  // First, group wines by effective region and then by domain
   const winesGroupedByEffectiveRegion: Record<string, Record<string, Wine[]>> = {};
 
   wines.forEach(w => {
@@ -193,7 +365,6 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
     const domain = domains.find(d => d.id === w.domainId);
     if (!domain) return;
     
-    // Effective Region Logic
     const region = w.region || domain.region || "Autre";
     
     if (!winesGroupedByEffectiveRegion[region]) winesGroupedByEffectiveRegion[region] = {};
@@ -202,12 +373,10 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
     winesGroupedByEffectiveRegion[region][domain.id].push(w);
   });
 
-  // Reconstruct into the final structure sorted by region then domain name
   Object.keys(winesGroupedByEffectiveRegion).sort().forEach(region => {
       grouped[region] = [];
       const domainIds = Object.keys(winesGroupedByEffectiveRegion[region]);
       
-      // Sort domains within the region
       domainIds.sort((a, b) => {
         const dA = domains.find(d => d.id === a)?.name || "";
         const dB = domains.find(d => d.id === b)?.name || "";
@@ -274,11 +443,7 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
                    <div class="domain-name">${domain.name}</div>
                    ${effectiveSubRegion ? `<div class="domain-sub">${effectiveSubRegion}</div>` : ''}
                    ${wines.map(w => {
-                     let price = w.sellingPriceHT;
-                     if (!price || price <= 0) {
-                        const coef = w.coefficient && w.coefficient > 0 ? w.coefficient : (domain.coefficient || 1.2);
-                        price = w.buyingPriceHT * coef;
-                     }
+                     const price = getSellingPrice(w, domain);
                      const formattedPrice = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);
                      return `<div class="wine-item"><div class="wine-name"><span>${w.name} ${w.format && w.format !== 'Bouteille (75cl)' ? `(${w.format})` : ''}</span></div><div class="wine-meta"><span class="wine-vintage">${w.vintage}</span><span class="wine-price">${formattedPrice}</span></div></div>`;
                    }).join('')}

@@ -1,25 +1,54 @@
 
-import React from 'react';
-import { LayoutDashboard, Wine, FileText, ShoppingCart, BookOpen, Settings, Users, Globe, PackagePlus, LineChart, ScanBarcode, Landmark, Receipt } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, Wine, FileText, ShoppingCart, BookOpen, Settings, Users, Globe, PackagePlus, LineChart, ScanBarcode, Landmark, Scale } from 'lucide-react';
 import { DEFAULT_LOGO_URL } from '../utils';
 
-// Fixed: Changed prop from children to title to resolve TS error
 const SectionTitle = ({ title }: { title: string }) => (
   <div className="px-4 mt-6 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 font-sans">
     {title}
   </div>
 );
 
-const Sidebar = ({ currentView, onViewChange }: { currentView: string, onViewChange: (view: string) => void }) => {
+const Sidebar = ({ 
+  currentView, 
+  onViewChange,
+  logo 
+}: { 
+  currentView: string, 
+  onViewChange: (view: string) => void,
+  logo?: string 
+}) => {
+  const [imgSrc, setImgSrc] = useState(DEFAULT_LOGO_URL);
+
+  useEffect(() => {
+    // Si un logo perso existe (et semble valide > 50 chars), on tente de l'utiliser
+    if (logo && logo.length > 50) {
+      setImgSrc(logo);
+    } else {
+      setImgSrc(DEFAULT_LOGO_URL);
+    }
+  }, [logo]);
+
   const navButtonClass = (view: string) => 
     `w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-sm ${currentView === view ? 'bg-red-900 text-white shadow-md shadow-red-950/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`;
 
   return (
     <aside className="w-64 bg-slate-900 text-white flex flex-col fixed h-full z-20 print:hidden border-r border-slate-800">
-      <div className="p-6 border-b border-slate-800 flex flex-col items-center gap-3 shrink-0">
-        <div className="w-full flex justify-center">
-           <div className="p-3 bg-white rounded-xl shadow-lg shadow-black/20 w-full flex items-center justify-center">
-              <img src={DEFAULT_LOGO_URL} alt="Cave des Peress" className="h-12 w-auto object-contain" />
+      <div className="p-4 border-b border-slate-800 flex flex-col items-center gap-3 shrink-0">
+        <div className="w-full flex justify-center px-2">
+           {/* MODIFIED: Reduced size constraints to prevent disproportionate look */}
+           <div className="bg-white rounded-lg shadow-sm p-2 w-full flex items-center justify-center min-h-[60px]">
+              <img 
+                src={imgSrc} 
+                alt="Cave des Peress" 
+                className="max-w-full h-auto max-h-16 object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== DEFAULT_LOGO_URL) {
+                    target.src = DEFAULT_LOGO_URL;
+                  }
+                }}
+              />
            </div>
         </div>
       </div>
@@ -34,14 +63,6 @@ const Sidebar = ({ currentView, onViewChange }: { currentView: string, onViewCha
           <LineChart size={18} /><span className="font-medium">Stratégie & Analyse</span>
         </button>
 
-        <SectionTitle title="Commerce & Clients" />
-        <button onClick={() => onViewChange('sales')} className={navButtonClass('sales')}>
-          <ShoppingCart size={18} /><span className="font-medium">Point de Vente</span>
-        </button>
-        <button onClick={() => onViewChange('clients')} className={navButtonClass('clients')}>
-          <Users size={18} /><span className="font-medium">Clients & Stocks</span>
-        </button>
-
         <SectionTitle title="Stocks & Appro" />
         <button onClick={() => onViewChange('inventory')} className={navButtonClass('inventory')}>
           <Wine size={18} /><span className="font-medium">Gestion du Stock</span>
@@ -50,12 +71,23 @@ const Sidebar = ({ currentView, onViewChange }: { currentView: string, onViewCha
           <PackagePlus size={18} /><span className="font-medium">Achats & Réception</span>
         </button>
 
+        <SectionTitle title="Commerce & Clients" />
+        <button onClick={() => onViewChange('sales')} className={navButtonClass('sales')}>
+          <ShoppingCart size={18} /><span className="font-medium">Point de Vente</span>
+        </button>
+        <button onClick={() => onViewChange('clients')} className={navButtonClass('clients')}>
+          <Users size={18} /><span className="font-medium">Clients & Stocks</span>
+        </button>
+
         <SectionTitle title="Finance" />
         <button onClick={() => onViewChange('accounting')} className={navButtonClass('accounting')}>
           <FileText size={18} /><span className="font-medium">Facturation</span>
         </button>
         <button onClick={() => onViewChange('general_accounting')} className={navButtonClass('general_accounting')}>
           <Landmark size={18} /><span className="font-medium">Trésorerie & Frais</span>
+        </button>
+        <button onClick={() => onViewChange('vat_report')} className={navButtonClass('vat_report')}>
+          <Scale size={18} /><span className="font-medium">Bilan TVA</span>
         </button>
 
         <SectionTitle title="Catalogue" />

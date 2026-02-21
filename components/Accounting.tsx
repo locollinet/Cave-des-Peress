@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Printer, FileBadge, Ban, Euro, Undo2, Trash2, Download, FileSpreadsheet, Calendar, Scale, User, Pencil, Save, X, Check, Truck } from 'lucide-react';
+import { Search, Printer, FileBadge, Ban, Euro, Undo2, Trash2, Download, FileSpreadsheet, Calendar, Scale, User, Pencil, Save, X, Check, Truck, FileClock, Eye, Calculator } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Invoice, Client, Wine, StockMovement, ExpenseCategory, CartItem } from '../types';
-import { formatCurrency, printInvoice } from '../utils';
+import { formatCurrency, printInvoice, calculateInvoiceTotals } from '../utils'; // Import updated utils
 import PaymentModal from './PaymentModal';
+import HistoricalInvoiceModal from './HistoricalInvoiceModal';
 
 const Accounting = ({ 
   invoices, 
@@ -16,7 +17,8 @@ const Accounting = ({
   onRenumberInvoice,
   onDeleteInvoice,
   logo,
-  onEditClient
+  onEditClient,
+  onImportHistoricalInvoice // New Prop
 }: { 
   invoices: Invoice[], 
   clients: Client[],
@@ -27,13 +29,17 @@ const Accounting = ({
   onRenumberInvoice: (oldId: string, newId: string) => Promise<boolean>,
   onDeleteInvoice: (id: string) => void,
   logo: string,
-  onEditClient: (id: string | null) => void
+  onEditClient: (id: string | null) => void,
+  onImportHistoricalInvoice: (invoice: Invoice) => Promise<boolean>
 }) => {
   const [tab, setTab] = useState<'proforma' | 'invoice' | 'cancelled' | 'drm'>('proforma');
   const [searchTerm, setSearchTerm] = useState('');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   
+  // Historical Import Modal
+  const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
+
   // State pour le rapport DRM
   const [drmMonth, setDrmMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
@@ -41,6 +47,9 @@ const Accounting = ({
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
+  // State pour l'inspection (Détail TVA)
+  const [invoiceToView, setInvoiceToView] = useState<Invoice | null>(null);
+
   // State pour l'édition de l'ID (Renumérotation) dans la modale
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempId, setTempId] = useState('');
@@ -156,13 +165,13 @@ const Accounting = ({
       }
   };
 
-  const updateEditItem = (itemId: string, field: 'name' | 'quantity' | 'sellingPriceHT', value: string) => {
+  const updateEditItem = (itemId: string, field: 'name' | 'quantity' | 'sellingPriceHT' | 'vatRate', value: string) => {
       if (!invoiceToEdit) return;
       
       let parsedValue: string | number = value;
       if (field === 'quantity') {
           parsedValue = parseInt(value) || 0;
-      } else if (field === 'sellingPriceHT') {
+      } else if (field === 'sellingPriceHT' || field === 'vatRate') {
           parsedValue = parseFloat(value) || 0;
       }
 
@@ -185,7 +194,7 @@ const Accounting = ({
   };
 
   const handleExportCSV = () => {
-    const header = ['Numero Facture', 'Date Facture', 'Client', 'Total HT', 'Frais Port HT', 'TVA (20%)', 'Total TTC', 'Statut', 'Date Paiement', 'Mode Paiement', 'Reference Paiement'];
+    const header = ['Numero Facture', 'Date Facture', 'Client', 'Total HT', 'Frais Port HT', 'TVA', 'Total TTC', 'Statut', 'Date Paiement', 'Mode Paiement', 'Reference Paiement'];
     const exportData = invoices
       .filter(i => i.status !== 'ProForma')
       .map(i => [
@@ -216,15 +225,19 @@ const Accounting = ({
   // Helper to recalculate totals on the fly for the modal display
   const editTotals = useMemo(() => {
       if (!invoiceToEdit) return { ht: 0, tva: 0, ttc: 0 };
-      const totalHT = invoiceToEdit.items.reduce((sum, i) => sum + (i.sellingPriceHT * i.quantity), 0);
-      const shipping = invoiceToEdit.shippingCost || 0;
-      const tva = (totalHT + shipping) * 0.20;
+      const calc = calculateInvoiceTotals(invoiceToEdit.items, invoiceToEdit.shippingCost || 0, invoiceToEdit.discount || 0);
       return {
-          ht: totalHT,
-          tva: tva,
-          ttc: totalHT + shipping + tva
+          ht: calc.totalHT,
+          tva: calc.totalTVA,
+          ttc: calc.totalTTC
       };
   }, [invoiceToEdit]);
+
+  // Helper pour la modale d'inspection (VIEW ONLY)
+  const viewTotals = useMemo(() => {
+      if (!invoiceToView) return null;
+      return calculateInvoiceTotals(invoiceToView.items, invoiceToView.shippingCost || 0, invoiceToView.discount || 0);
+  }, [invoiceToView]);
 
   return (
     <div className="space-y-6">
@@ -234,7 +247,118 @@ const Accounting = ({
         onConfirm={handlePaymentConfirm} 
       />
 
-      {/* MODAL EDITION FACTURE */}
+      <HistoricalInvoiceModal 
+        isOpen={isHistoricalModalOpen}
+        onClose={() => setIsHistoricalModalOpen(false)}
+        onConfirm={onImportHistoricalInvoice}
+        existingClientNames={clients.map(c => c.name)}
+      />
+
+      {/* MODAL INSPECTION (VIEW ONLY) */}
+      {invoiceToView && viewTotals && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col">
+                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <Calculator size={20} className="text-blue-600" /> Détail Calculs : {invoiceToView.id}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">{invoiceToView.clientName} - {invoiceToView.invoiceDate || invoiceToView.date}</p>
+                    </div>
+                    <button onClick={() => setInvoiceToView(null)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-full">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="p-6 flex-1 overflow-y-auto">
+                    {/* 1. TABLEAU RÉPARTITION TVA (LE PLUS IMPORTANT) */}
+                    <div className="mb-8">
+                        <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 border-l-4 border-blue-500 pl-2">Répartition TVA (Synthèse)</h4>
+                        <table className="w-full text-left border border-gray-200 rounded-lg overflow-hidden">
+                            <thead className="bg-gray-100 text-xs text-gray-600 uppercase">
+                                <tr>
+                                    <th className="px-4 py-2">Taux TVA</th>
+                                    <th className="px-4 py-2 text-right">Base HT</th>
+                                    <th className="px-4 py-2 text-right">Montant TVA</th>
+                                    <th className="px-4 py-2 text-right font-bold">Total TTC</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {Object.entries(viewTotals.vatBreakdown).sort((a,b) => parseFloat(b[0]) - parseFloat(a[0])).map(([rate, value]) => {
+                                    const data = value as { base: number, amount: number };
+                                    return (
+                                    <tr key={rate} className="hover:bg-gray-50">
+                                        <td className="px-4 py-2 font-bold text-blue-700">{rate}%</td>
+                                        <td className="px-4 py-2 text-right">{formatCurrency(data.base)}</td>
+                                        <td className="px-4 py-2 text-right text-gray-600">{formatCurrency(data.amount)}</td>
+                                        <td className="px-4 py-2 text-right font-medium">{formatCurrency(data.base + data.amount)}</td>
+                                    </tr>
+                                )})}
+                                <tr className="bg-gray-50 font-bold border-t border-gray-300">
+                                    <td className="px-4 py-3">TOTAL</td>
+                                    <td className="px-4 py-3 text-right">{formatCurrency(viewTotals.totalHT)}</td>
+                                    <td className="px-4 py-3 text-right text-blue-700">{formatCurrency(viewTotals.totalTVA)}</td>
+                                    <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(viewTotals.totalTTC)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* 2. DÉTAIL DES LIGNES (POUR VÉRIFIER QUEL ARTICLE A QUEL TAUX) */}
+                    <div>
+                        <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 border-l-4 border-gray-400 pl-2">Détail des lignes</h4>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm border-collapse">
+                                <thead>
+                                    <tr className="border-b border-gray-200 text-gray-500 text-xs">
+                                        <th className="py-2 pl-2">Désignation</th>
+                                        <th className="py-2 text-center">Taux TVA</th>
+                                        <th className="py-2 text-center">Qté</th>
+                                        <th className="py-2 text-right">P.U. HT</th>
+                                        <th className="py-2 text-right pr-2">Total HT</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {invoiceToView.items.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50">
+                                            <td className="py-2 pl-2 text-gray-800">{item.name}</td>
+                                            <td className="py-2 text-center">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] border ${
+                                                    (item.vatRate || 20) === 20 ? 'bg-gray-100 border-gray-200' : 'bg-orange-100 border-orange-200 text-orange-800'
+                                                }`}>
+                                                    {item.vatRate || 20}%
+                                                </span>
+                                            </td>
+                                            <td className="py-2 text-center text-gray-500">{item.quantity}</td>
+                                            <td className="py-2 text-right text-gray-500">{formatCurrency(item.sellingPriceHT)}</td>
+                                            <td className="py-2 text-right pr-2 font-medium">{formatCurrency(item.sellingPriceHT * item.quantity)}</td>
+                                        </tr>
+                                    ))}
+                                    {invoiceToView.shippingCost && invoiceToView.shippingCost > 0 && (
+                                        <tr className="bg-gray-50 italic">
+                                            <td className="py-2 pl-2">Frais de Port</td>
+                                            <td className="py-2 text-center text-xs">20%</td>
+                                            <td className="py-2 text-center">1</td>
+                                            <td className="py-2 text-right">{formatCurrency(invoiceToView.shippingCost)}</td>
+                                            <td className="py-2 text-right pr-2">{formatCurrency(invoiceToView.shippingCost)}</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="bg-gray-50 p-4 border-t border-gray-200 text-right">
+                    <button onClick={() => setInvoiceToView(null)} className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* MODAL EDITION FACTURE (Code existant inchangé) */}
       {isEditModalOpen && invoiceToEdit && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -323,10 +447,11 @@ const Accounting = ({
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase bg-gray-50">
-                                <th className="px-4 py-2 w-1/2">Désignation</th>
-                                <th className="px-4 py-2 w-24 text-center">Qté</th>
-                                <th className="px-4 py-2 w-32 text-right">Prix Unit. HT</th>
-                                <th className="px-4 py-2 w-32 text-right">Total HT</th>
+                                <th className="px-4 py-2 w-[40%]">Désignation</th>
+                                <th className="px-4 py-2 w-20 text-center">TVA %</th>
+                                <th className="px-4 py-2 w-20 text-center">Qté</th>
+                                <th className="px-4 py-2 w-28 text-right">Prix Unit. HT</th>
+                                <th className="px-4 py-2 w-28 text-right">Total HT</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -341,6 +466,18 @@ const Accounting = ({
                                         />
                                         <div className="text-xs text-gray-500 mt-1">{item.vintage} {item.color ? `• ${item.color}` : ''}</div>
                                         {item.isService && <div className="text-[10px] bg-indigo-100 text-indigo-700 px-1 rounded inline-block mt-1">Prestation</div>}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                       <select 
+                                          className="w-full text-center border border-gray-300 rounded py-1 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                                          value={item.vatRate !== undefined ? item.vatRate : 20}
+                                          onChange={(e) => updateEditItem(item.id, 'vatRate', e.target.value)}
+                                       >
+                                          <option value="20">20</option>
+                                          <option value="10">10</option>
+                                          <option value="5.5">5.5</option>
+                                          <option value="0">0</option>
+                                       </select>
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         <input 
@@ -370,15 +507,15 @@ const Accounting = ({
                         </tbody>
                         <tfoot>
                             <tr className="border-t border-gray-200">
-                                <td colSpan={3} className="px-4 py-3 text-right text-gray-600">Sous-total HT</td>
+                                <td colSpan={4} className="px-4 py-3 text-right text-gray-600">Sous-total HT</td>
                                 <td className="px-4 py-3 text-right font-medium">{formatCurrency(editTotals.ht)}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3} className="px-4 py-2 text-right text-gray-600">TVA (20%)</td>
+                                <td colSpan={4} className="px-4 py-2 text-right text-gray-600">Total TVA</td>
                                 <td className="px-4 py-2 text-right font-medium">{formatCurrency(editTotals.tva)}</td>
                             </tr>
                             <tr className="bg-gray-50">
-                                <td colSpan={3} className="px-4 py-3 text-right font-bold text-gray-900">Total TTC</td>
+                                <td colSpan={4} className="px-4 py-3 text-right font-bold text-gray-900">Total TTC</td>
                                 <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">{formatCurrency(editTotals.ttc)}</td>
                             </tr>
                         </tfoot>
@@ -431,6 +568,15 @@ const Accounting = ({
                    onChange={e => setSearchTerm(e.target.value)}
                  />
               </div>
+              
+              <button 
+                 onClick={() => setIsHistoricalModalOpen(true)}
+                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium flex items-center gap-2 shadow-sm whitespace-nowrap"
+                 title="Importer une ancienne facture sans déstocker"
+              >
+                 <FileClock size={16} /> Historique
+              </button>
+
               <button 
                  onClick={handleExportCSV}
                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2 shadow-sm whitespace-nowrap"
@@ -510,14 +656,17 @@ const Accounting = ({
                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">N°</th>
                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Client</th>
-                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Montant TTC</th>
+                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total HT</th>
+                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total TVA</th>
+                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total TTC</th>
                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Statut</th>
+                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Paiement</th>
                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Actions</th>
                </tr>
              </thead>
              <tbody className="divide-y divide-gray-200">
                {filtered.length === 0 ? (
-                 <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500 italic">Aucun document trouvé.</td></tr>
+                 <tr><td colSpan={9} className="px-6 py-8 text-center text-gray-500 italic">Aucun document trouvé.</td></tr>
                ) : (
                  filtered.map(inv => (
                    <tr key={inv.id} className={`hover:bg-gray-50 ${inv.paymentMethod === 'Sortie Perso' ? 'bg-purple-50 hover:bg-purple-100' : ''}`}>
@@ -538,6 +687,14 @@ const Accounting = ({
                             </button>
                          )}
                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 text-right">{formatCurrency(inv.totalHT)}</td>
+                      <td 
+                        className="px-6 py-4 text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-right font-medium"
+                        onClick={() => setInvoiceToView(inv)}
+                        title="Cliquez pour voir le détail de la TVA par taux"
+                      >
+                        {formatCurrency(inv.totalTVA)}
+                      </td>
                       <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">{formatCurrency(inv.totalTTC)}</td>
                       <td className="px-6 py-4 text-center">
                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
@@ -549,8 +706,26 @@ const Accounting = ({
                            {inv.status === 'Paid' ? 'Payée' : inv.status === 'Validated' ? 'Validée' : inv.status === 'Cancelled' ? 'Annulée' : 'Pro Forma'}
                          </span>
                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 text-center">
+                         {inv.paymentDate ? (
+                            <div className="flex flex-col items-center">
+                               <span className="font-medium text-gray-700">{inv.paymentDate}</span>
+                               {inv.paymentMethod && <span className="text-[10px] text-gray-400 uppercase tracking-wide">{inv.paymentMethod}</span>}
+                            </div>
+                         ) : (
+                            <span className="text-gray-300">-</span>
+                         )}
+                      </td>
                       <td className="px-6 py-4 text-right">
                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                               onClick={() => setInvoiceToView(inv)}
+                               className="p-1.5 hover:bg-blue-50 rounded text-blue-500" 
+                               title="Inspecter le calcul TVA"
+                            >
+                               <Eye size={16} />
+                            </button>
+
                             <button 
                               onClick={() => printInvoice(inv, clients, logo)}
                               className="p-1.5 hover:bg-gray-100 rounded text-gray-600" 

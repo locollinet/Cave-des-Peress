@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wine as WineIcon, X, Save, Plus } from 'lucide-react';
+import { Wine as WineIcon, X, Save, Copy, Search } from 'lucide-react';
 import { Wine, Domain, WineColor } from '../types';
-import { getColorBadgeClass } from '../utils';
+import { getColorBadgeClass, getSmartCoefficient } from '../utils';
 
 const BOTTLE_FORMATS = [
   'Demi-bouteille (37.5cl)',
@@ -21,11 +21,12 @@ interface WineModalProps {
   onClose: () => void;
   wine?: Wine; // Si undefined, mode création
   initialData?: Partial<Wine>; // Pour la duplication ou pré-remplissage
+  wines?: Wine[]; // Liste complète pour la recherche de duplication
   domains: Domain[];
   onSave: (wine: Wine, domainName?: string, domainCoef?: number, domainRegion?: string) => void;
 }
 
-const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialData, domains, onSave }) => {
+const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialData, wines, domains, onSave }) => {
   // États du formulaire
   const [name, setName] = useState('');
   const [vintage, setVintage] = useState(new Date().getFullYear().toString());
@@ -43,6 +44,10 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
   const [newDomainName, setNewDomainName] = useState('');
   const [newDomainRegion, setNewDomainRegion] = useState('');
   const [newDomainCoef, setNewDomainCoef] = useState('1.5');
+
+  // États pour la duplication interne (Recherche)
+  const [importSearch, setImportSearch] = useState('');
+  const [showImportSuggestions, setShowImportSuggestions] = useState(false);
 
   // Initialisation
   useEffect(() => {
@@ -64,19 +69,86 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
       setNewDomainName('');
       setNewDomainRegion('');
       setNewDomainCoef('1.5');
+      
+      // Reset Import
+      setImportSearch('');
+      setShowImportSuggestions(false);
     }
   }, [isOpen, wine, initialData, domains]);
 
-  // Auto-fill region/coef when domain changes
+  // Auto-fill region/coef/price when domain changes
   useEffect(() => {
     if (domainId !== 'new') {
       const d = domains.find(dom => dom.id === domainId);
       if (d) {
-        if (!region && !wine) setRegion(d.region); // Pré-remplir seulement si vide et création
-        if (!coef && !wine) setCoef(d.coefficient.toString());
+        // Logique : On applique les valeurs par défaut du domaine SEULEMENT si on crée un nouveau vin (pas en édition)
+        // ou si les champs sont vides.
+        if (!wine) {
+            if (!region) setRegion(d.region);
+            
+            // NOTE: On ne force pas le coef du domaine ici si un prix est déjà saisi,
+            // car la règle du prix (<70 vs >70) est prioritaire pour le négociant.
+            // On l'initialise seulement si le champ est vide.
+            if (!coef) {
+                setCoef(d.coefficient.toString());
+            }
+        }
       }
     }
   }, [domainId, domains]);
+
+  // --- HANDLERS INTELLIGENTS ---
+
+  const handlePriceChange = (val: string) => {
+    setPrice(val);
+    const p = parseFloat(val);
+
+    // RÈGLE INTELLIGENTE (EXCEL)
+    // En mode création, le prix dicte le coefficient :
+    // < 70€ -> 1.2
+    // >= 70€ -> 1.1
+    if (!wine && !isNaN(p)) {
+        const smartCoef = getSmartCoefficient(p);
+        setCoef(smartCoef.toString());
+        setSellingPrice(Math.ceil(p * smartCoef).toString());
+    } else {
+        // Mode édition ou fallback : on garde le coef actuel
+        const c = parseFloat(coef);
+        if (!isNaN(p) && !isNaN(c)) {
+            setSellingPrice(Math.ceil(p * c).toString());
+        }
+    }
+  };
+
+  const handleCoefChange = (val: string) => {
+    setCoef(val);
+    // Calcul automatique du prix de vente si un prix d'achat existe
+    const c = parseFloat(val);
+    const p = parseFloat(price);
+    
+    if (!isNaN(p) && !isNaN(c)) {
+        setSellingPrice(Math.ceil(p * c).toString());
+    }
+  };
+
+  const handleImportSelection = (sourceWine: Wine) => {
+      setName(sourceWine.name);
+      setVintage(sourceWine.vintage); // L'utilisateur le changera probablement
+      setColor(sourceWine.color);
+      setPrice(sourceWine.buyingPriceHT.toString());
+      setSellingPrice(sourceWine.sellingPriceHT ? sourceWine.sellingPriceHT.toString() : '');
+      setCoef(sourceWine.coefficient ? sourceWine.coefficient.toString() : '');
+      setFormat(sourceWine.format);
+      setRegion(sourceWine.region || '');
+      setSubRegion(sourceWine.subRegion || '');
+      setDomainId(sourceWine.domainId);
+      
+      // On reset le stock à 0 car c'est une nouvelle référence
+      setStock('0');
+      
+      setImportSearch('');
+      setShowImportSuggestions(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +187,14 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
     onClose();
   };
 
+  // Filter wines for duplication search
+  const filteredImportWines = wines 
+    ? wines.filter(w => !w.isArchived && (
+        w.name.toLowerCase().includes(importSearch.toLowerCase()) || 
+        domains.find(d => d.id === w.domainId)?.name.toLowerCase().includes(importSearch.toLowerCase())
+      )).slice(0, 5)
+    : [];
+
   if (!isOpen) return null;
 
   return (
@@ -132,6 +212,50 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
         
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           
+          {/* SECTION DUPLICATION (Seulement en mode création) */}
+          {!wine && (
+             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 relative z-20">
+                <label className="block text-xs font-bold text-blue-700 uppercase tracking-wide mb-1.5 flex items-center gap-2">
+                   <Copy size={12} /> Pré-remplir depuis un vin existant
+                </label>
+                <div className="relative">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 w-4 h-4" />
+                   <input 
+                      type="text" 
+                      placeholder="Rechercher pour dupliquer (ex: Chablis 2020)..."
+                      className="w-full pl-9 pr-4 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={importSearch}
+                      onChange={(e) => { setImportSearch(e.target.value); setShowImportSuggestions(true); }}
+                      onFocus={() => setShowImportSuggestions(true)}
+                   />
+                   {showImportSuggestions && importSearch && filteredImportWines.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
+                         {filteredImportWines.map(w => {
+                            const d = domains.find(dom => dom.id === w.domainId);
+                            return (
+                               <div 
+                                  key={w.id} 
+                                  className="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 flex justify-between items-center"
+                                  onClick={() => handleImportSelection(w)}
+                               >
+                                  <div>
+                                     <span className="font-bold text-gray-800 text-sm">{d?.name}</span>
+                                     <span className="text-gray-600 text-sm ml-2">{w.name}</span>
+                                     <span className="text-gray-400 text-xs ml-2">({w.vintage})</span>
+                                  </div>
+                                  <div className="text-blue-600 text-xs font-medium">Copier</div>
+                               </div>
+                            );
+                         })}
+                      </div>
+                   )}
+                </div>
+                <p className="text-[10px] text-blue-600 mt-1.5">
+                   Sélectionnez un vin pour copier ses caractéristiques (Prix, Domaine, Coef...). Vous n'aurez plus qu'à changer le millésime.
+                </p>
+             </div>
+          )}
+
           {/* Section Domaine */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Domaine</label>
@@ -241,7 +365,7 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
                      type="number" step="0.01" required 
                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-medium" 
                      value={price} 
-                     onChange={(e) => setPrice(e.target.value)} 
+                     onChange={(e) => handlePriceChange(e.target.value)} 
                    />
                 </div>
              </div>
@@ -250,9 +374,9 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
                 <input 
                   type="number" step="0.1" 
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center" 
-                  placeholder={domains.find(d => d.id === domainId)?.coefficient.toString() || "1.2"}
                   value={coef} 
-                  onChange={(e) => setCoef(e.target.value)} 
+                  onChange={(e) => handleCoefChange(e.target.value)} 
+                  title="< 70€ = 1.2 | >= 70€ = 1.1"
                 />
              </div>
              <div>

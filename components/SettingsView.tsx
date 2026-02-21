@@ -1,6 +1,6 @@
 
 import React, { useRef } from 'react';
-import { ImageIcon, Save, Upload, AlertTriangle } from 'lucide-react';
+import { ImageIcon, Save, Upload, AlertTriangle, RotateCcw } from 'lucide-react';
 import { Wine, Domain, Invoice, StockMovement } from '../types';
 
 const SettingsView = ({
@@ -102,7 +102,7 @@ const SettingsView = ({
                {logo ? (
                  <img src={logo} alt="Logo actuel" className="w-full h-full object-contain" />
                ) : (
-                 <span className="text-xs text-gray-400 text-center px-2">Aucun logo personnalisé</span>
+                 <span className="text-xs text-gray-400 text-center px-2">Logo par défaut actif</span>
                )}
             </div>
             <div className="flex-1">
@@ -120,8 +120,8 @@ const SettingsView = ({
                    Choisir un fichier...
                  </button>
                  {logo && (
-                   <button onClick={() => onLogoUpdate('')} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium">
-                     Supprimer
+                   <button onClick={() => onLogoUpdate('')} className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium flex items-center gap-2">
+                     <RotateCcw size={16} /> Réinitialiser (Défaut)
                    </button>
                  )}
                </div>

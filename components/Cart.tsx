@@ -1,13 +1,15 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Plus, Trash2, FileText, Gift, UserPlus, Home, X, Truck, Briefcase } from 'lucide-react';
+import { Search, Plus, Trash2, FileText, Gift, UserPlus, Home, X, Truck, Briefcase, Utensils, Coffee, MousePointer2 } from 'lucide-react';
 import { Wine, Domain, CartItem, Client, WineColor } from '../types';
-import { formatCurrency, getSellingPrice, getColorBadgeClass } from '../utils';
+import { formatCurrency, getSellingPrice, getColorBadgeClass, calculateInvoiceTotals } from '../utils'; // Import updated utils
 
 const Cart = ({ 
   wines, 
   domains, 
   clients,
+  initialSelection,
+  onClearInitialSelection,
   onCreateInvoice,
   onEditDomain,
   onEditWine,
@@ -16,6 +18,8 @@ const Cart = ({
   wines: Wine[], 
   domains: Domain[], 
   clients: Client[],
+  initialSelection?: string[],
+  onClearInitialSelection?: () => void,
   onCreateInvoice: (clientName: string, items: CartItem[], type: 'ProForma' | 'Invoice', shippingCost?: number) => void,
   onEditDomain: (id: string) => void,
   onEditWine: (id: string) => void,
@@ -27,6 +31,10 @@ const Cart = ({
   const [docType, setDocType] = useState<'ProForma' | 'Invoice'>('ProForma');
   const [isPersonalConsumption, setIsPersonalConsumption] = useState(false);
   const [shippingCost, setShippingCost] = useState('');
+  
+  // New: Menu for special items
+  const [showAddItemMenu, setShowAddItemMenu] = useState(false);
+  const addItemMenuRef = useRef<HTMLDivElement>(null);
 
   const [regionFilter, setRegionFilter] = useState('all');
   const [subRegionFilter, setSubRegionFilter] = useState('all');
@@ -35,11 +43,46 @@ const Cart = ({
 
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  // --- EFFECT: Load Initial Selection from Inventory ---
+  useEffect(() => {
+    if (initialSelection && initialSelection.length > 0) {
+        setCartItems(prev => {
+            const newItems: CartItem[] = [];
+            initialSelection.forEach(id => {
+                // Avoid duplicates if already in cart
+                if (prev.find(i => i.id === id && !i.fromExternalStock)) return;
+                
+                const wine = wines.find(w => w.id === id);
+                if (wine) {
+                    const domain = domains.find(d => d.id === wine.domainId);
+                    const price = isPersonalConsumption ? wine.buyingPriceHT : getSellingPrice(wine, domain);
+                    newItems.push({
+                        ...wine,
+                        quantity: 1,
+                        sellingPriceHT: price,
+                        isGift: false,
+                        fromExternalStock: false,
+                        vatRate: 20 // Default wine VAT
+                    });
+                }
+            });
+            return [...prev, ...newItems];
+        });
+        
+        // Clear the global selection so it doesn't re-trigger on next mount
+        if (onClearInitialSelection) onClearInitialSelection();
+    }
+  }, [initialSelection, wines, domains, isPersonalConsumption, onClearInitialSelection]);
+
+
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
+      }
+      if (addItemMenuRef.current && !addItemMenuRef.current.contains(event.target as Node)) {
+        setShowAddItemMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -82,15 +125,22 @@ const Cart = ({
       const domain = domains.find(d => d.id === wine.domainId);
       const price = isPersonalConsumption ? wine.buyingPriceHT : getSellingPrice(wine, domain);
       
-      return [...prev, { ...wine, quantity: 1, sellingPriceHT: price, isGift: false, fromExternalStock: false }];
+      return [...prev, { 
+          ...wine, 
+          quantity: 1, 
+          sellingPriceHT: price, 
+          isGift: false, 
+          fromExternalStock: false,
+          vatRate: 20 // Default Wine VAT
+      }];
     });
   };
 
-  const addServiceItem = () => {
-      const serviceItem: CartItem = {
-          id: `srv_${Date.now()}`,
+  const handleAddSpecialItem = (label: string, defaultVat: number, prefix: string = 'Autre') => {
+      const newItem: CartItem = {
+          id: `cust_${Date.now()}`,
           domainId: '',
-          name: 'Prestation de Service (Double-cliquez pour éditer)',
+          name: label === 'Autre' ? 'Saisie Libre (Modifier titre)' : label,
           vintage: '',
           color: WineColor.Sparkling, // Dummy
           buyingPriceHT: 0,
@@ -99,9 +149,11 @@ const Cart = ({
           format: 'Unité',
           quantity: 1,
           isService: true,
-          fromExternalStock: false // Important pour la suppression
+          fromExternalStock: false,
+          vatRate: defaultVat
       };
-      setCartItems(prev => [...prev, serviceItem]);
+      setCartItems(prev => [...prev, newItem]);
+      setShowAddItemMenu(false);
   };
 
   const updateServiceName = (id: string, name: string) => {
@@ -109,7 +161,6 @@ const Cart = ({
   };
 
   const removeFromCart = (id: string, fromExternal: boolean = false) => {
-    // Correction du bug : on force la comparaison booléenne avec (i.fromExternalStock || false)
     setCartItems(prev => prev.filter(i => !(i.id === id && (i.fromExternalStock || false) === fromExternal)));
   };
 
@@ -125,7 +176,6 @@ const Cart = ({
 
   const updatePrice = (id: string, newPrice: string, fromExternal: boolean = false) => {
     const parsedPrice = parseFloat(newPrice);
-    // On autorise 0 pour les services, sinon on bloque si NaN
     if (isNaN(parsedPrice)) return;
     
     setCartItems(prev => prev.map(i => {
@@ -134,6 +184,11 @@ const Cart = ({
       }
       return i;
     }));
+  };
+
+  const updateVatRate = (id: string, newRate: string) => {
+      const rate = parseFloat(newRate);
+      setCartItems(prev => prev.map(i => i.id === id ? { ...i, vatRate: rate } : i));
   };
 
   const toggleGift = (id: string, fromExternal: boolean = false) => {
@@ -146,6 +201,7 @@ const Cart = ({
              const price = isPersonalConsumption ? originalWine.buyingPriceHT : getSellingPrice(originalWine, domain);
              return { ...item, isGift: false, sellingPriceHT: price };
           }
+          // For service items, restore previous price is tricky so it stays 0 unless edited manually
           return { ...item, isGift: false };
         } else {
           return { ...item, isGift: true, sellingPriceHT: 0 };
@@ -203,10 +259,10 @@ const Cart = ({
     return matchesSearch && matchesRegion && matchesSubRegion && matchesDomain;
   });
 
-  const totalHT = cartItems.reduce((sum, item) => sum + (item.sellingPriceHT * item.quantity), 0);
   const shipping = parseFloat(shippingCost) || 0;
-  const totalTVA = (totalHT + shipping) * 0.20;
-  const totalTTC = totalHT + shipping + totalTVA;
+  // --- USE CENTRAL CALCULATION ---
+  const totals = calculateInvoiceTotals(cartItems, shipping);
+  // -------------------------------
 
   const handleSubmit = () => {
     if (!clientName) return alert('Nom du client requis');
@@ -343,9 +399,30 @@ const Cart = ({
              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                <FileText className="text-red-800" /> Panier
              </h2>
-             <button onClick={addServiceItem} className="text-xs flex items-center gap-1 bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded hover:bg-indigo-200 border border-indigo-200 font-bold transition-colors">
-                <Briefcase size={14} /> + Ajouter Prestation
-             </button>
+             <div className="relative" ref={addItemMenuRef}>
+                 <button 
+                    onClick={() => setShowAddItemMenu(!showAddItemMenu)} 
+                    className="text-xs flex items-center gap-1 bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded hover:bg-indigo-200 border border-indigo-200 font-bold transition-colors"
+                 >
+                    <Plus size={14} /> Ajouter Élément
+                 </button>
+                 {showAddItemMenu && (
+                     <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 shadow-xl rounded-lg w-48 z-30 py-1">
+                        <button onClick={() => handleAddSpecialItem('Prestation de Service', 20)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2">
+                           <Briefcase size={14} className="text-gray-500" /> Prestation (20%)
+                        </button>
+                        <button onClick={() => handleAddSpecialItem('Alimentaire', 10)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2">
+                           <Utensils size={14} className="text-gray-500" /> Alimentaire (10%)
+                        </button>
+                        <button onClick={() => handleAddSpecialItem('Boisson Soft', 5.5)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2">
+                           <Coffee size={14} className="text-gray-500" /> Soft (5.5%)
+                        </button>
+                        <button onClick={() => handleAddSpecialItem('Autre', 20)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2 border-t border-gray-100">
+                           <MousePointer2 size={14} className="text-gray-500" /> Autre / Libre
+                        </button>
+                     </div>
+                 )}
+             </div>
           </div>
           
           <div className="mb-6 relative" ref={suggestionsRef}>
@@ -405,13 +482,25 @@ const Cart = ({
                     <div className="flex justify-between items-start w-full mb-2">
                         {item.isService ? (
                             <div className="flex-1 mr-2">
-                                <label className="text-[10px] uppercase font-bold text-indigo-500 mb-1 block">Description Prestation</label>
+                                <label className="text-[10px] uppercase font-bold text-indigo-500 mb-1 flex items-center justify-between">
+                                   <span>Description</span>
+                                   <select 
+                                      className="bg-transparent text-right outline-none text-[10px] font-bold text-indigo-600 cursor-pointer border-b border-indigo-200"
+                                      value={item.vatRate}
+                                      onChange={(e) => updateVatRate(item.id, e.target.value)}
+                                   >
+                                      <option value="20">TVA 20%</option>
+                                      <option value="10">TVA 10%</option>
+                                      <option value="5.5">TVA 5.5%</option>
+                                      <option value="0">TVA 0%</option>
+                                   </select>
+                                </label>
                                 <input 
                                     type="text" 
                                     className="font-bold text-gray-900 w-full bg-white border border-indigo-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                                     value={item.name}
                                     onChange={(e) => updateServiceName(item.id, e.target.value)}
-                                    placeholder="Ex: Direction Hôtel Leflaive - Journée"
+                                    placeholder="Libellé personnalisé..."
                                 />
                             </div>
                         ) : (
@@ -495,7 +584,7 @@ const Cart = ({
 
              <div className="flex justify-between text-gray-600 text-sm">
                <span>Total HT</span>
-               <span>{formatCurrency(totalHT)}</span>
+               <span>{formatCurrency(totals.totalHT)}</span>
              </div>
              
              {/* SHIPPING INPUT */}
@@ -517,12 +606,12 @@ const Cart = ({
              </div>
 
              <div className="flex justify-between text-gray-600 text-sm">
-               <span>TVA (20%)</span>
-               <span>{formatCurrency(totalTVA)}</span>
+               <span>TVA</span>
+               <span>{formatCurrency(totals.totalTVA)}</span>
              </div>
              <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
                <span>Total TTC</span>
-               <span>{formatCurrency(totalTTC)}</span>
+               <span>{formatCurrency(totals.totalTTC)}</span>
              </div>
           </div>
 

@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wine, Domain, Invoice, StockMovement, Client, CartItem, PurchaseItem, Expense, ExpenseCategory } from './types';
+import { Wine, Domain, Invoice, StockMovement, Client, CartItem, PurchaseItem, Expense, ExpenseCategory, WineColor } from './types';
 import { api } from './api';
+import { calculateInvoiceTotals } from './utils'; // Import du calculateur centralisé
 
 const DEFAULT_CATEGORIES = [
   'Achat Marchandise (Vin)',
@@ -138,54 +139,92 @@ export const useAppController = () => {
   };
 
   const handleReception = async (provider: string, reference: string, items: PurchaseItem[]) => {
-    try {
-      for (const item of items) {
-        const currentWine = wines.find(w => w.id === item.id);
-        if (currentWine) {
-          const oldStock = Math.max(0, currentWine.stock);
-          const oldTotalValue = oldStock * currentWine.buyingPriceHT;
-          const newBatchValue = item.quantity * item.purchasePriceHT;
-          const newTotalQty = oldStock + item.quantity;
-          
-          let newWeightedPrice = currentWine.buyingPriceHT;
-          if (newTotalQty > 0) {
-            newWeightedPrice = (oldTotalValue + newBatchValue) / newTotalQty;
-          }
+    // Audit Correction: Split Preparation vs Execution to avoid partial updates
+    const movementsToCreate: StockMovement[] = [];
+    const winesToUpdate: Wine[] = [];
+    const now = new Date().toISOString();
 
-          const updatedWine: Wine = {
-            ...currentWine,
-            stock: currentWine.stock + item.quantity,
-            buyingPriceHT: parseFloat(newWeightedPrice.toFixed(4))
-          };
-
-          await api.updateWine(updatedWine);
-
-          await api.createMovement({
-            id: `mv_in_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
-            date: new Date().toISOString(),
-            wineId: item.id,
-            wineName: item.name,
-            type: 'IN',
-            quantity: item.quantity,
-            reason: `Réception Fournisseur`,
-            price: item.purchasePriceHT,
-            provider: provider,
-            reference: reference
-          });
-
-          setWines(prev => prev.map(w => w.id === item.id ? updatedWine : w));
+    // 1. Prepare Data Logic (No Side Effects yet)
+    for (const item of items) {
+      const currentWine = wines.find(w => w.id === item.id);
+      if (currentWine) {
+        const oldStock = Math.max(0, currentWine.stock);
+        const oldTotalValue = oldStock * currentWine.buyingPriceHT;
+        const newBatchValue = item.quantity * item.purchasePriceHT;
+        const newTotalQty = oldStock + item.quantity;
+        
+        let newWeightedPrice = currentWine.buyingPriceHT;
+        if (newTotalQty > 0) {
+          newWeightedPrice = (oldTotalValue + newBatchValue) / newTotalQty;
         }
+
+        const updatedWine: Wine = {
+          ...currentWine,
+          stock: currentWine.stock + item.quantity,
+          buyingPriceHT: parseFloat(newWeightedPrice.toFixed(4))
+        };
+        winesToUpdate.push(updatedWine);
+
+        movementsToCreate.push({
+          id: `mv_in_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
+          date: now,
+          wineId: item.id,
+          wineName: item.name,
+          type: 'IN',
+          quantity: item.quantity,
+          reason: `Réception Fournisseur`,
+          price: item.purchasePriceHT,
+          provider: provider,
+          reference: reference,
+          paymentStatus: 'Pending'
+        });
       }
+    }
+
+    // 2. Execution (Atomic-like)
+    try {
+      // Step A: Create History (Bulk Insert). If this fails, no stock is touched.
+      await api.createMovements(movementsToCreate);
+
+      // Step B: Update Stock (Parallel).
+      // Even if one fails here, we have the history trace to investigate/repair.
+      await Promise.all(winesToUpdate.map(w => api.updateWine(w)));
+
+      // Step C: Update Local State
+      setWines(prev => prev.map(w => {
+         const update = winesToUpdate.find(u => u.id === w.id);
+         return update || w;
+      }));
+      setStockMovements(prev => [...movementsToCreate, ...prev]);
       
-      const m = await api.fetchMovements();
-      setStockMovements(m);
       return true;
+
     } catch (e: any) {
       console.error(e);
-      alert("Erreur lors de la réception : " + e.message);
-      fetchData(); // Rollback
+      alert("ERREUR CRITIQUE RÉCEPTION : " + e.message + "\nLa réception a été annulée pour éviter les erreurs de stock.");
+      // Force reload to ensure local state matches DB reality
+      fetchData(); 
       return false;
     }
+  };
+
+  const handleUpdatePurchasePayment = async (provider: string, reference: string, paymentData: { date: string, method: string }) => {
+     try {
+        await api.updatePurchasePayment(provider, reference, { ...paymentData, status: 'Paid' });
+        
+        // Update local state
+        setStockMovements(prev => prev.map(m => {
+           if (m.provider === provider && m.reference === reference && m.type === 'IN') {
+              return { ...m, paymentStatus: 'Paid', paymentDate: paymentData.date, paymentMethod: paymentData.method };
+           }
+           return m;
+        }));
+        return true;
+     } catch(e: any) {
+        console.error(e);
+        alert("Erreur maj paiement : " + e.message);
+        return false;
+     }
   };
 
   const handleCancelReception = async (movementsToCancel: StockMovement[]) => {
@@ -442,6 +481,19 @@ export const useAppController = () => {
      }
   };
 
+  // NOUVEAU: Import Facture Historique (Sans Mouvement Stock)
+  const handleImportHistoricalInvoice = async (invoiceData: Invoice) => {
+    try {
+        await api.createInvoice(invoiceData);
+        setInvoices(prev => [invoiceData, ...prev]);
+        return true;
+    } catch (e: any) {
+        console.error(e);
+        alert("Erreur lors de l'import historique : " + e.message);
+        return false;
+    }
+  };
+
   // UPDATE: Ajout du paramètre shippingCost
   const handleCreateInvoice = async (clientName: string, items: CartItem[], type: 'ProForma' | 'Invoice', forceClientId?: string, shippingCost: number = 0) => {
     let clientId = forceClientId;
@@ -460,12 +512,10 @@ export const useAppController = () => {
           }
         }
 
-        const totalHT = items.reduce((sum, i) => sum + (i.sellingPriceHT * i.quantity), 0);
-        // TVA : 20% sur la marchandise + 20% sur les frais de port
-        const itemsTVA = totalHT * 0.20;
-        const shippingTVA = shippingCost * 0.20;
-        const totalTVA = itemsTVA + shippingTVA;
-        
+        // --- CALCUL CENTRALISÉ DES TOTAUX ---
+        const totals = calculateInvoiceTotals(items, shippingCost);
+        // ------------------------------------
+
         const prefix = type === 'Invoice' ? 'FAC' : 'PF';
         const yearStr = currentYear.toString();
         const pattern = new RegExp(`^${prefix}-${yearStr}-(\\d{4})$`);
@@ -501,11 +551,11 @@ export const useAppController = () => {
           items,
           type: 'Sale',
           status: type === 'Invoice' ? 'Validated' : 'ProForma',
-          totalHT,
-          totalTVA,
-          totalTTC: totalHT + shippingCost + totalTVA,
+          totalHT: totals.totalHT,
+          totalTVA: totals.totalTVA,
+          totalTTC: totals.totalTTC,
           discount: 0,
-          shippingCost
+          shippingCost: totals.shippingCost
         };
 
         await api.createInvoice(newInvoice);
@@ -574,18 +624,15 @@ export const useAppController = () => {
 
   const handleUpdateInvoice = async (invoice: Invoice) => {
       try {
-          const totalHT = invoice.items.reduce((sum, i) => sum + (i.sellingPriceHT * i.quantity), 0);
-          const shipping = invoice.shippingCost || 0;
-          const itemsTVA = totalHT * 0.20;
-          const shippingTVA = shipping * 0.20;
-          const totalTVA = itemsTVA + shippingTVA;
-          const totalTTC = totalHT + shipping + totalTVA;
+          // --- CALCUL CENTRALISÉ DES TOTAUX ---
+          const totals = calculateInvoiceTotals(invoice.items, invoice.shippingCost || 0);
+          // ------------------------------------
 
           const updatedInvoice = {
               ...invoice,
-              totalHT,
-              totalTVA,
-              totalTTC
+              totalHT: totals.totalHT,
+              totalTVA: totals.totalTVA,
+              totalTTC: totals.totalTTC
           };
 
           await api.updateInvoice(updatedInvoice);
@@ -810,12 +857,17 @@ export const useAppController = () => {
 
   const handleAddExpense = async (expense: Expense) => {
     try {
-      await api.createExpense(expense);
-      const newExpenses = await api.fetchExpenses();
-      setExpenses(newExpenses);
+      if (expense.id) { // Update
+          await api.updateExpense(expense);
+          setExpenses(prev => prev.map(e => e.id === expense.id ? expense : e));
+      } else { // Create
+          await api.createExpense(expense);
+          const newExpenses = await api.fetchExpenses();
+          setExpenses(newExpenses);
+      }
     } catch(e: any) {
       console.error(e);
-      alert("Erreur lors de l'ajout de la dépense : " + (e.message || e));
+      alert("Erreur lors de l'enregistrement de la dépense : " + (e.message || e));
     }
   };
 
@@ -857,7 +909,8 @@ export const useAppController = () => {
     actions: {
       handleStockUpdate, handleAddProduct, handleUpdateProduct, handleDeleteProduct, handleToggleArchive,
       handleUpdateDomain, handleAddDomain, handleDeleteDomain,
-      handleClientUpdate, handleAddClient, handleDeleteClient, handleStockTransfer, handleCreateInvoice, handleUpdateInvoice, handleRenumberInvoice, handleReception, handleCancelReception,
+      handleClientUpdate, handleAddClient, handleDeleteClient, handleStockTransfer, handleCreateInvoice, handleUpdateInvoice, handleRenumberInvoice, handleImportHistoricalInvoice,
+      handleReception, handleUpdatePurchasePayment, handleCancelReception,
       handleInvoiceStatusUpdate, handleDeleteInvoice, handleAddExpense, handleDeleteExpense, handleAddCategory, handleDeleteCategory, setWines, setLogo, setIsSimulation
     }
   };

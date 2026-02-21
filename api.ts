@@ -80,7 +80,10 @@ const mapMovementFromDB = (m: any): StockMovement => ({
   reason: m.reason,
   price: m.price,
   provider: m.provider,
-  reference: m.reference
+  reference: m.reference,
+  paymentStatus: m.payment_status,
+  paymentDate: m.payment_date,
+  paymentMethod: m.payment_method
 });
 
 const mapExpenseFromDB = (e: any): Expense => ({
@@ -267,6 +270,7 @@ export const api = {
   // WRITE - INVOICES
   createInvoice: async (invoice: Invoice) => {
     if (checkSim('createInvoice', invoice)) return;
+    // CRITICAL FIX: Include payment fields in the INSERT payload
     const { error } = await supabase.from('invoices').insert({
       id: invoice.id,
       date: invoice.date,
@@ -278,9 +282,12 @@ export const api = {
       total_ht: invoice.totalHT,
       total_tva: invoice.totalTVA,
       total_ttc: invoice.totalTTC,
-      shipping_cost: invoice.shippingCost || 0, // NEW
+      shipping_cost: invoice.shippingCost || 0,
       status: invoice.status,
-      type: invoice.type
+      type: invoice.type,
+      payment_date: invoice.paymentDate,         // <--- ADDED
+      payment_method: invoice.paymentMethod,     // <--- ADDED
+      payment_reference: invoice.paymentReference // <--- ADDED
     });
     if (error) throw error;
   },
@@ -292,7 +299,7 @@ export const api = {
         total_ht: invoice.totalHT,
         total_tva: invoice.totalTVA,
         total_ttc: invoice.totalTTC,
-        shipping_cost: invoice.shippingCost || 0, // NEW
+        shipping_cost: invoice.shippingCost || 0,
         client_address: invoice.clientAddress,
         client_name: invoice.clientName
     }).eq('id', invoice.id);
@@ -337,6 +344,9 @@ export const api = {
   // WRITE - MOVEMENTS
   createMovement: async (movement: StockMovement) => {
     if (checkSim('createMovement', movement)) return;
+    
+    // Standard insert with all fields. 
+    // Requires 'payment_status', 'payment_date', 'payment_method' to exist in DB.
     const { error } = await supabase.from('stock_movements').insert({
       id: movement.id,
       date: movement.date,
@@ -347,9 +357,55 @@ export const api = {
       reason: movement.reason,
       price: movement.price,
       provider: movement.provider,
-      reference: movement.reference
+      reference: movement.reference,
+      payment_status: movement.paymentStatus,
+      payment_date: movement.paymentDate,
+      payment_method: movement.paymentMethod
     });
+
     if (error) throw error;
+  },
+
+  // NEW: Bulk insert for safety
+  createMovements: async (movements: StockMovement[]) => {
+    if (checkSim('createMovements', movements)) return;
+    if (movements.length === 0) return;
+    
+    const records = movements.map(m => ({
+      id: m.id,
+      date: m.date,
+      wine_id: m.wineId,
+      wine_name: m.wineName,
+      type: m.type,
+      quantity: m.quantity,
+      reason: m.reason,
+      price: m.price,
+      provider: m.provider,
+      reference: m.reference,
+      payment_status: m.paymentStatus,
+      payment_date: m.paymentDate,
+      payment_method: m.paymentMethod
+    }));
+
+    const { error } = await supabase.from('stock_movements').insert(records);
+    if (error) throw error;
+  },
+
+  // Pour la gestion groupée des paiements fournisseurs
+  updatePurchasePayment: async (provider: string, reference: string, paymentData: { status: 'Paid', date: string, method: string }) => {
+     if (checkSim('updatePurchasePayment', { provider, reference, paymentData })) return;
+     
+     const { error } = await supabase.from('stock_movements')
+        .update({
+            payment_status: paymentData.status,
+            payment_date: paymentData.date,
+            payment_method: paymentData.method
+        })
+        .eq('provider', provider)
+        .eq('reference', reference)
+        .eq('type', 'IN');
+     
+     if (error) throw error;
   },
 
   deleteMovement: async (id: string) => {
@@ -372,6 +428,21 @@ export const api = {
       payment_method: expense.paymentMethod
     });
     if (error) throw error;
+  },
+
+  updateExpense: async (expense: Expense) => {
+      if (checkSim('updateExpense', expense)) return;
+      const { error } = await supabase.from('expenses').update({
+        date: expense.date,
+        provider: expense.provider,
+        category: expense.category,
+        description: expense.description,
+        amount_ht: expense.amountHT,
+        amount_tva: expense.amountTVA,
+        amount_ttc: expense.amountTTC,
+        payment_method: expense.paymentMethod
+      }).eq('id', expense.id);
+      if (error) throw error;
   },
 
   deleteExpense: async (id: string) => {

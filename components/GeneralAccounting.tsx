@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Trash2, Calendar, FileText, TrendingDown, TrendingUp, DollarSign, PieChart, CreditCard, Landmark, Settings, X } from 'lucide-react';
+import { Plus, Trash2, Calendar, FileText, TrendingDown, TrendingUp, DollarSign, PieChart, CreditCard, Landmark, Settings, X, Pencil } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Expense, Invoice, StockMovement, ExpenseCategory } from '../types';
 import { formatCurrency } from '../utils';
@@ -43,6 +43,7 @@ const GeneralAccounting = ({
   const [newCategoryName, setNewCategoryName] = useState('');
   
   // Form State
+  const [editId, setEditId] = useState<string | null>(null);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [provider, setProvider] = useState('');
   const [category, setCategory] = useState('');
@@ -128,6 +129,28 @@ const GeneralAccounting = ({
     setLines(lines.map(l => l.id === id ? { ...l, [field]: value } : l));
   };
 
+  const handleEditExpense = (exp: Expense) => {
+      setEditId(exp.id);
+      setDate(exp.date);
+      setProvider(exp.provider);
+      setCategory(exp.category); // Assuming it matches a label in categories, else might need logic check
+      setDescription(exp.description || '');
+      setPaymentMethod(exp.paymentMethod);
+      
+      // We restore values to Simple Mode by default for easier editing
+      // (Cannot reconstruct Advanced Mode perfectly from flattened data)
+      setVatMode('simple');
+      setSimpleTTC(exp.amountTTC.toString());
+      setManualTVA(exp.amountTVA.toString());
+      
+      // If custom category was used (not in list), put it in custom input
+      const exists = categories.some(c => c.label === exp.category);
+      if (!exists && exp.category !== 'Autre') {
+          setCategory('Autre');
+          setCustomCategory(exp.category);
+      }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!provider || totals.ttc === 0) { // Allow negative numbers, check for non-zero
@@ -148,7 +171,7 @@ const GeneralAccounting = ({
     }
 
     const newExpense: Expense = {
-      id: '', 
+      id: editId || '', // Empty for new, filled for update
       date,
       provider,
       category: finalCategory,
@@ -162,6 +185,7 @@ const GeneralAccounting = ({
     onAddExpense(newExpense);
 
     // Reset Form
+    setEditId(null);
     setProvider('');
     setSimpleTTC('');
     setManualTVA('');
@@ -171,6 +195,15 @@ const GeneralAccounting = ({
     ]);
     setDescription('');
     setCustomCategory('');
+  };
+
+  const handleCancelEdit = () => {
+      setEditId(null);
+      setProvider('');
+      setSimpleTTC('');
+      setManualTVA('');
+      setDescription('');
+      setCustomCategory('');
   };
 
   const handleCreateCategory = () => {
@@ -192,11 +225,12 @@ const GeneralAccounting = ({
     const totalSalesHT = salesInvoices.reduce((acc, i) => acc + i.totalHT, 0);
     const totalSalesTVA = salesInvoices.reduce((acc, i) => acc + i.totalTVA, 0);
 
-    // 2. CASH OUT - WINE (Achats de Vin)
-    // On se base sur les mouvements de stock entrants valorisés de l'année
+    // 2. CASH OUT - WINE (Achats de Vin PAYÉS)
+    // On ne compte que ce qui est PAYÉ selon le nouveau statut paymentStatus
     const winePurchases = stockMovements.filter(m => {
+       // Filter: Type IN + Is Purchase (Price exists) + Date in year + Status is PAID
        const d = new Date(m.date);
-       return d.getFullYear() === reportYear && m.type === 'IN' && m.price !== undefined;
+       return m.type === 'IN' && m.price !== undefined && m.paymentStatus === 'Paid' && d.getFullYear() === reportYear;
     });
 
     const totalWinePurchasesHT = winePurchases.reduce((acc, m) => acc + (m.quantity * (m.price || 0)), 0);
@@ -288,7 +322,8 @@ const GeneralAccounting = ({
            {/* Formulaire Saisie */}
            <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-fit">
               <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                 <Plus className="text-indigo-600" /> Saisir une dépense
+                 {editId ? <Pencil className="text-orange-600" /> : <Plus className="text-indigo-600" />}
+                 {editId ? 'Modifier la dépense' : 'Saisir une dépense'}
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4">
                  <div>
@@ -434,9 +469,16 @@ const GeneralAccounting = ({
                     </select>
                  </div>
 
-                 <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm">
-                    Enregistrer la dépense
-                 </button>
+                 <div className="flex gap-2">
+                    {editId && (
+                       <button type="button" onClick={handleCancelEdit} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm">
+                          Annuler
+                       </button>
+                    )}
+                    <button type="submit" className={`flex-1 ${editId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white py-2 rounded-lg transition-colors font-medium text-sm shadow-sm`}>
+                       {editId ? 'Mettre à jour' : 'Enregistrer'}
+                    </button>
+                 </div>
               </form>
            </div>
 
@@ -475,7 +517,10 @@ const GeneralAccounting = ({
                                 <td className="px-4 py-3 text-right text-gray-400 text-xs">{formatCurrency(exp.amountTVA)}</td>
                                 <td className={`px-4 py-3 text-right font-bold ${exp.amountTTC < 0 ? 'text-red-600' : 'text-gray-800'}`}>{formatCurrency(exp.amountTTC)}</td>
                                 <td className="px-4 py-3 text-center">
-                                   <button onClick={() => onDeleteExpense(exp.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={16} /></button>
+                                   <div className="flex items-center justify-center gap-2">
+                                      <button onClick={() => handleEditExpense(exp)} className="text-blue-400 hover:text-blue-600 p-1" title="Modifier"><Pencil size={16} /></button>
+                                      <button onClick={() => onDeleteExpense(exp.id)} className="text-red-400 hover:text-red-600 p-1" title="Supprimer"><Trash2 size={16} /></button>
+                                   </div>
                                 </td>
                              </tr>
                           ))
@@ -499,12 +544,13 @@ const GeneralAccounting = ({
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Achats Marchandises (HT)</p>
+                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Achats Vins Vendus (HT)</p>
+                 {/* Correction du label pour être cohérent avec Dashboard (Achats payés) */}
                  <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 text-blue-700 rounded-lg"><TrendingDown size={20} /></div>
                     <span className="text-2xl font-bold text-gray-900">{formatCurrency(reportData.wineCostHT)}</span>
                  </div>
-                 <p className="text-xs text-gray-500 mt-2">Réceptions vin {reportYear}</p>
+                 <p className="text-xs text-gray-500 mt-2">Flux Sortant Vins Payés {reportYear}</p>
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">

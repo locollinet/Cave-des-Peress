@@ -36,7 +36,8 @@ export interface CartItem extends Wine {
   sellingPriceHT: number;
   isGift?: boolean;
   fromExternalStock?: boolean; // If true, stock is deducted from client, not main inventory
-  isService?: boolean; // NEW: Si true, c'est une prestation (pas de déstockage)
+  isService?: boolean; // Si true, c'est une prestation ou produit libre
+  vatRate?: number; // NEW: Taux de TVA spécifique (ex: 5.5, 10, 20)
 }
 
 // Interface spécifique pour le panier d'achat (Réception fournisseur)
@@ -55,7 +56,7 @@ export interface Invoice {
   items: CartItem[];
   totalHT: number;
   discount: number;
-  shippingCost?: number; // NEW: Frais de port HT
+  shippingCost?: number; // Frais de port HT
   totalTVA: number;
   totalTTC: number;
   status: 'ProForma' | 'Validated' | 'Paid' | 'Cancelled'; // Workflow status
@@ -77,6 +78,10 @@ export interface StockMovement {
   price?: number;        // Prix unitaire du mouvement (si achat)
   provider?: string;     // Nom du fournisseur
   reference?: string;    // Numéro de facture fournisseur
+  // Gestion Paiement Fournisseur (Nouveau)
+  paymentStatus?: 'Paid' | 'Pending';
+  paymentDate?: string;
+  paymentMethod?: string;
 }
 
 export interface Client {

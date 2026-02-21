@@ -16,6 +16,7 @@ import SettingsView from './components/SettingsView';
 import Clients from './components/Clients';
 import Domains from './components/Domains';
 import GeneralAccounting from './components/GeneralAccounting';
+import VatReport from './components/VatReport'; // NEW
 import MobileInventory from './components/MobileInventory';
 import Projection from './components/Projection';
 import DomainModal from './components/DomainModal';
@@ -26,6 +27,9 @@ function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const { data, actions } = useAppController();
   
+  // --- ÉTATS POUR LE TRANSFERT (Inventaire -> Vente/Achat) ---
+  const [transferSelection, setTransferSelection] = useState<string[]>([]);
+
   // --- ÉTATS GLOBAUX POUR LES MODALES ---
   
   // Domaine
@@ -119,9 +123,23 @@ function App() {
       }
   };
 
+  // --- HANDLER TRANSFERT INVENTAIRE ---
+  const handleTransferTo = (wineIds: string[], destination: 'sales' | 'purchases') => {
+    setTransferSelection(wineIds);
+    setCurrentView(destination);
+  };
+
+  const clearTransferSelection = () => {
+    setTransferSelection([]);
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar currentView={currentView} onViewChange={setCurrentView} />
+      <Sidebar 
+        currentView={currentView} 
+        onViewChange={setCurrentView} 
+        logo={data.logo}
+      />
 
       <main className="ml-64 flex-1 p-8 overflow-x-hidden print:ml-0 print:p-0 relative">
         {data.isSimulation && (
@@ -147,6 +165,7 @@ function App() {
               {currentView === 'clients' && 'Clients & Stocks Déportés'}
               {currentView === 'accounting' && 'Facturation'}
               {currentView === 'general_accounting' && 'Trésorerie & Dépenses'}
+              {currentView === 'vat_report' && 'Bilan TVA & Déclarations'}
               {currentView === 'wine_menu' && 'Carte des Vins'}
               {currentView === 'settings' && 'Paramètres'}
             </h2>
@@ -156,9 +175,11 @@ function App() {
         {currentView === 'dashboard' && (
           <Dashboard 
             wines={data.wines} 
+            domains={data.domains}
             invoices={data.invoices} 
             movements={data.stockMovements} 
             clients={data.clients} 
+            expenses={data.expenses} // Passed to fix the overhead calculation
           />
         )}
         {currentView === 'projection' && (
@@ -189,6 +210,8 @@ function App() {
             onResetData={() => {}} 
             onEditDomain={handleEditDomain} 
             onEditWine={handleEditWine}
+            onTransferTo={handleTransferTo}
+            onConfirmPurchase={actions.handleReception}
           />
         )}
         {currentView === 'mobile_inventory' && (
@@ -207,10 +230,13 @@ function App() {
             wines={data.wines} 
             domains={data.domains} 
             stockMovements={data.stockMovements}
+            initialSelection={transferSelection}
+            onClearInitialSelection={clearTransferSelection}
             onConfirmPurchase={actions.handleReception}
             onCancelPurchase={actions.handleCancelReception}
             onEditDomain={handleEditDomain}
             onEditWine={handleEditWine}
+            onUpdatePayment={actions.handleUpdatePurchasePayment}
           />
         )}
         {currentView === 'domains' && (
@@ -227,8 +253,10 @@ function App() {
              wines={data.wines} 
              domains={data.domains} 
              clients={data.clients} 
-             onCreateInvoice={(clientName, items, type) => {
-                actions.handleCreateInvoice(clientName, items, type);
+             initialSelection={transferSelection}
+             onClearInitialSelection={clearTransferSelection}
+             onCreateInvoice={(clientName, items, type, shipping) => {
+                actions.handleCreateInvoice(clientName, items, type, undefined, shipping);
                 setCurrentView('accounting');
              }}
              onEditDomain={handleEditDomain}
@@ -268,6 +296,7 @@ function App() {
             onDeleteInvoice={actions.handleDeleteInvoice}
             logo={data.logo} 
             onEditClient={handleEditClient}
+            onImportHistoricalInvoice={actions.handleImportHistoricalInvoice}
           />
         )}
         {currentView === 'general_accounting' && (
@@ -280,6 +309,13 @@ function App() {
             onDeleteExpense={actions.handleDeleteExpense}
             onAddCategory={actions.handleAddCategory}
             onDeleteCategory={actions.handleDeleteCategory}
+          />
+        )}
+        {currentView === 'vat_report' && (
+          <VatReport 
+            invoices={data.invoices}
+            stockMovements={data.stockMovements}
+            expenses={data.expenses}
           />
         )}
         {currentView === 'wine_menu' && <WineMenu wines={data.wines} domains={data.domains} isEmbedded={true} logo={data.logo} />}
@@ -307,6 +343,7 @@ function App() {
           onClose={() => setIsWineModalOpen(false)}
           wine={wineToEdit || undefined}
           initialData={wineInitialData}
+          wines={data.wines}
           domains={data.domains}
           onSave={handleSaveWine}
         />

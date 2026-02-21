@@ -1,36 +1,103 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Plus, Trash2, ArrowRight, PackageCheck, AlertCircle, History, X } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowRight, PackageCheck, AlertCircle, History, X, CheckCircle, Clock, Sparkles, Copy } from 'lucide-react';
 import { Wine, Domain, PurchaseItem, StockMovement } from '../types';
 import { formatCurrency, getColorBadgeClass } from '../utils';
+import PaymentModal from './PaymentModal';
 
 const Purchases = ({ 
   wines, 
   domains, 
   stockMovements,
+  initialSelection, // New Prop
+  onClearInitialSelection, // New Prop
   onConfirmPurchase,
   onCancelPurchase,
   onEditDomain,
-  onEditWine
+  onEditWine,
+  onUpdatePayment 
 }: { 
   wines: Wine[], 
   domains: Domain[], 
   stockMovements: StockMovement[],
+  initialSelection?: string[],
+  onClearInitialSelection?: () => void,
   onConfirmPurchase: (provider: string, reference: string, items: PurchaseItem[]) => Promise<boolean>,
   onCancelPurchase: (movements: StockMovement[]) => Promise<boolean>,
   onEditDomain: (id: string) => void,
-  onEditWine: (id: string) => void
+  onEditWine: (id: string | null, initialData?: Partial<Wine>) => void,
+  onUpdatePayment?: (provider: string, reference: string, paymentData: { date: string, method: string }) => Promise<boolean>
 }) => {
   const [activeTab, setActiveTab] = useState<'new' | 'journal'>('new');
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [provider, setProvider] = useState('');
   const [reference, setReference] = useState('');
   
+  // Payment Modal State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedPurchase, setSelectedPurchase] = useState<{provider: string, reference: string} | null>(null);
+
   // Filters states similar to Cart
   const [regionFilter, setRegionFilter] = useState('all');
   const [subRegionFilter, setSubRegionFilter] = useState('all');
   const [domainFilter, setDomainFilter] = useState('all');
   const [itemSearch, setItemSearch] = useState('');
+
+  // --- AUTO-ADD NEW WINE LOGIC ---
+  const prevWineIdsRef = useRef<Set<string>>(new Set(wines.map(w => w.id)));
+  const isCreatingRef = useRef(false);
+
+  // Detect new wines added globally while in this view
+  useEffect(() => {
+    const currentWineIds = new Set(wines.map(w => w.id));
+    
+    // If we have more wines now than before, and we marked that we were creating one
+    if (currentWineIds.size > prevWineIdsRef.current.size && isCreatingRef.current) {
+        // Find the new wine
+        const newWine = wines.find(w => !prevWineIdsRef.current.has(w.id));
+        if (newWine) {
+            // Auto add to cart
+            setPurchaseItems(prev => {
+                // Avoid duplicates just in case
+                if (prev.find(i => i.id === newWine.id)) return prev;
+                return [...prev, { ...newWine, quantity: 12, purchasePriceHT: newWine.buyingPriceHT }];
+            });
+            // Reset flag
+            isCreatingRef.current = false;
+        }
+    }
+    
+    // Update ref for next render
+    prevWineIdsRef.current = currentWineIds;
+  }, [wines]);
+
+  // --- EFFECT: Load Initial Selection ---
+  useEffect(() => {
+    if (initialSelection && initialSelection.length > 0) {
+        setPurchaseItems(prev => {
+            const newItems: PurchaseItem[] = [];
+            initialSelection.forEach(id => {
+                // Avoid duplicates
+                if (prev.find(i => i.id === id)) return;
+                
+                const wine = wines.find(w => w.id === id);
+                if (wine) {
+                    newItems.push({
+                        ...wine,
+                        quantity: 12, // Default case of 12 for professional purchase
+                        purchasePriceHT: wine.buyingPriceHT
+                    });
+                }
+            });
+            return [...prev, ...newItems];
+        });
+        // Switch to "new" tab
+        setActiveTab('new');
+        // Clear global selection
+        if (onClearInitialSelection) onClearInitialSelection();
+    }
+  }, [initialSelection, wines, onClearInitialSelection]);
+
 
   // --- LOGIC JOURNAL ---
   const purchaseJournal = useMemo(() => {
@@ -40,7 +107,10 @@ const Purchases = ({
       provider: string, 
       reference: string, 
       items: StockMovement[], 
-      totalHT: number 
+      totalHT: number,
+      paymentStatus: 'Paid' | 'Pending',
+      paymentDate?: string,
+      paymentMethod?: string
     }> = {};
 
     stockMovements.filter(m => m.type === 'IN' && m.price !== undefined).forEach(m => {
@@ -56,12 +126,18 @@ const Purchases = ({
             provider: providerKey,
             reference: refKey,
             items: [],
-            totalHT: 0
+            totalHT: 0,
+            paymentStatus: m.paymentStatus || 'Pending',
+            paymentDate: m.paymentDate,
+            paymentMethod: m.paymentMethod
          };
        }
 
        groups[key].items.push(m);
        groups[key].totalHT += (m.quantity * (m.price || 0));
+       
+       // Priority to Paid status if inconsistent (should not happen if batch updated)
+       if (m.paymentStatus === 'Paid') groups[key].paymentStatus = 'Paid';
     });
 
     return Object.values(groups).sort((a, b) => {
@@ -126,8 +202,19 @@ const Purchases = ({
     setPurchaseItems(prev => {
       const existing = prev.find(i => i.id === wine.id);
       if (existing) return prev; 
-      return [...prev, { ...wine, quantity: 1, purchasePriceHT: wine.buyingPriceHT }];
+      return [...prev, { ...wine, quantity: 12, purchasePriceHT: wine.buyingPriceHT }];
     });
+  };
+
+  const handleCreateNewWine = () => {
+      isCreatingRef.current = true;
+      onEditWine(null);
+  };
+
+  const handleDuplicateWine = (wine: Wine) => {
+      isCreatingRef.current = true; // IMPORTANT : Ceci déclenchera l'ajout automatique après sauvegarde
+      const copyData = { ...wine, id: undefined, stock: 0 };
+      onEditWine(null, copyData);
   };
 
   const removeFromCart = (id: string) => {
@@ -165,9 +252,27 @@ const Purchases = ({
      }
   };
 
+  const openPaymentModal = (entry: any) => {
+     setSelectedPurchase({ provider: entry.provider, reference: entry.reference });
+     setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentConfirm = async (date: string, method: string) => {
+      if (selectedPurchase && onUpdatePayment) {
+          await onUpdatePayment(selectedPurchase.provider, selectedPurchase.reference, { date, method });
+          setIsPaymentModalOpen(false);
+          setSelectedPurchase(null);
+      }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-9rem)] gap-6">
-       
+       <PaymentModal 
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onConfirm={(d, m, r) => handlePaymentConfirm(d, m)} // Ref is optional
+       />
+
        <div className="flex p-1 bg-gray-200 rounded-lg w-fit">
           <button 
              onClick={() => setActiveTab('new')} 
@@ -185,25 +290,35 @@ const Purchases = ({
 
        {activeTab === 'new' ? (
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-hidden min-h-0">
-            {/* LEFT COLUMN: CATALOG (Identical format to Cart.tsx) */}
+            {/* LEFT COLUMN: CATALOG */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input 
-                      type="text" 
-                      placeholder="Rechercher un vin pour réception..." 
-                      className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      value={itemSearch}
-                      onChange={e => setItemSearch(e.target.value)}
-                    />
-                    {itemSearch && (
-                       <button onClick={() => setItemSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                          <X size={14} />
-                       </button>
-                    )}
+                  <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input 
+                          type="text" 
+                          placeholder="Rechercher un vin..." 
+                          className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                          value={itemSearch}
+                          onChange={e => setItemSearch(e.target.value)}
+                        />
+                        {itemSearch && (
+                          <button onClick={() => setItemSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                              <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                      <button 
+                        onClick={handleCreateNewWine}
+                        className="px-4 py-2 bg-red-800 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-red-900 shadow-sm transition-colors whitespace-nowrap"
+                        title="Créer une nouvelle référence et l'ajouter au bon de réception"
+                      >
+                         <Plus size={16} /> Créer Référence
+                      </button>
                   </div>
                   
+                  {/* Filters */}
                   <div className="grid grid-cols-3 gap-2">
                     <select
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none bg-white"
@@ -251,7 +366,15 @@ const Purchases = ({
                 <div className="flex-1 overflow-y-auto p-4">
                   <div className="space-y-2">
                   {filteredWines.length === 0 ? (
-                      <div className="text-center py-10 text-gray-400 italic">Aucun vin trouvé.</div>
+                      <div className="text-center py-10 flex flex-col items-center justify-center">
+                         <p className="text-gray-400 italic mb-4">Aucun vin trouvé.</p>
+                         <button 
+                            onClick={handleCreateNewWine}
+                            className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors"
+                         >
+                            <Sparkles size={16} /> Créer cette référence manquante
+                         </button>
+                      </div>
                   ) : (
                       filteredWines.map(wine => {
                         const domain = domains.find(d => d.id === wine.domainId);
@@ -259,40 +382,47 @@ const Purchases = ({
                         return (
                           <div 
                             key={wine.id}
-                            onClick={() => !inCart && addToCart(wine)}
-                            className={`w-full text-left p-3 rounded-lg border flex justify-between items-center group transition-all cursor-pointer ${inCart ? 'bg-blue-50 border-blue-200 opacity-60 cursor-default' : 'hover:bg-gray-50 border-gray-100'}`}
+                            className={`w-full text-left p-3 rounded-lg border flex justify-between items-center group transition-all ${inCart ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50 border-gray-100'}`}
                           >
-                            <div>
-                              <div 
-                                className="font-semibold text-gray-800 hover:text-blue-600 hover:underline"
-                                onClick={(e) => { 
-                                   e.stopPropagation();
-                                   if (domain) onEditDomain(domain.id);
-                                }}
-                              >
+                            <div className="flex-1 cursor-pointer" onClick={() => !inCart && addToCart(wine)}>
+                              <div className="font-semibold text-gray-800">
                                 {domain?.name}
                               </div>
-                              <div 
-                                className="text-sm text-gray-600 hover:text-blue-600 hover:underline cursor-pointer"
-                                onClick={(e) => {
-                                   e.stopPropagation();
-                                   onEditWine(wine.id);
-                                }}
-                              >
+                              <div className="text-sm text-gray-600">
                                 {wine.name} <span className="text-gray-400">| {wine.vintage}</span>
                               </div>
                               <div className="mt-1 flex gap-2">
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getColorBadgeClass(wine.color)}`}>{wine.color}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">Stock Actuel: {wine.stock}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">P.A. Actuel: {formatCurrency(wine.buyingPriceHT)}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">Stock: {wine.stock}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">P.A.: {formatCurrency(wine.buyingPriceHT)}</span>
                               </div>
                             </div>
-                            {!inCart && (
-                              <div className="bg-blue-50 text-blue-700 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Plus size={16} />
-                              </div>
-                            )}
-                            {inCart && <span className="text-xs font-bold text-blue-600">Sélectionné</span>}
+                            
+                            <div className="flex items-center gap-2 pl-3 border-l border-gray-100 ml-2">
+                               {/* DUPLICATE BUTTON */}
+                               <button 
+                                 onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDuplicateWine(wine);
+                                 }}
+                                 className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                 title="Dupliquer (Créer nouveau millésime)"
+                               >
+                                  <Copy size={16} />
+                               </button>
+
+                               {/* ADD BUTTON or STATUS */}
+                               {inCart ? (
+                                  <span className="text-xs font-bold text-blue-600 px-2">Sélectionné</span>
+                               ) : (
+                                  <button 
+                                    onClick={() => addToCart(wine)}
+                                    className="p-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors"
+                                  >
+                                    <Plus size={16} />
+                                  </button>
+                               )}
+                            </div>
                           </div>
                         )
                       })
@@ -338,7 +468,6 @@ const Purchases = ({
                     </div>
                   ) : (
                     purchaseItems.map(item => {
-                      // Simulation du CUMP
                       const oldStock = Math.max(0, item.stock); 
                       const oldTotal = oldStock * item.buyingPriceHT;
                       const newBatchTotal = item.quantity * item.purchasePriceHT;
@@ -346,7 +475,7 @@ const Purchases = ({
                       const newCump = newTotalQty > 0 ? (oldTotal + newBatchTotal) / newTotalQty : item.purchasePriceHT;
 
                       return (
-                      <div key={item.id} className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-sm">
+                      <div key={item.id} className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-sm animate-in slide-in-from-right-2 duration-300">
                           <div className="flex justify-between items-start mb-2">
                             <div className="font-medium text-gray-900 w-3/4 line-clamp-2">{item.name}</div>
                             <button onClick={() => removeFromCart(item.id)} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
@@ -423,8 +552,8 @@ const Purchases = ({
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Fournisseur</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Référence</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Nb Références</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total HT (Est.)</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Statut Paiement</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Actions</th>
                   </tr>
                 </thead>
@@ -440,11 +569,22 @@ const Purchases = ({
                               <td className="px-6 py-4 text-sm text-gray-600">
                                  {entry.reference !== 'Sans Ref' ? <span className="bg-gray-100 px-2 py-1 rounded border border-gray-200">{entry.reference}</span> : <span className="text-gray-400 italic">-</span>}
                               </td>
-                              <td className="px-6 py-4 text-sm text-center">
-                                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">{entry.items.length} lignes</span>
-                              </td>
                               <td className="px-6 py-4 text-sm text-right font-bold text-gray-900">
                                  {formatCurrency(entry.totalHT)}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                 {entry.paymentStatus === 'Paid' ? (
+                                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-bold" title={`Payé le ${entry.paymentDate} par ${entry.paymentMethod}`}>
+                                       <CheckCircle size={12} /> Payé
+                                    </span>
+                                 ) : (
+                                    <button 
+                                       onClick={() => openPaymentModal(entry)}
+                                       className="inline-flex items-center gap-1 bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-bold hover:bg-orange-200 transition-colors"
+                                    >
+                                       <Clock size={12} /> À Payer
+                                    </button>
+                                 )}
                               </td>
                               <td className="px-6 py-4 text-right">
                                  <button 
