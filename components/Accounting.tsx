@@ -274,34 +274,36 @@ const Accounting = ({
                     {/* 1. TABLEAU RÉPARTITION TVA (LE PLUS IMPORTANT) */}
                     <div className="mb-8">
                         <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 border-l-4 border-blue-500 pl-2">Répartition TVA (Synthèse)</h4>
-                        <table className="w-full text-left border border-gray-200 rounded-lg overflow-hidden">
-                            <thead className="bg-gray-100 text-xs text-gray-600 uppercase">
-                                <tr>
-                                    <th className="px-4 py-2">Taux TVA</th>
-                                    <th className="px-4 py-2 text-right">Base HT</th>
-                                    <th className="px-4 py-2 text-right">Montant TVA</th>
-                                    <th className="px-4 py-2 text-right font-bold">Total TTC</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {Object.entries(viewTotals.vatBreakdown).sort((a,b) => parseFloat(b[0]) - parseFloat(a[0])).map(([rate, value]) => {
-                                    const data = value as { base: number, amount: number };
-                                    return (
-                                    <tr key={rate} className="hover:bg-gray-50">
-                                        <td className="px-4 py-2 font-bold text-blue-700">{rate}%</td>
-                                        <td className="px-4 py-2 text-right">{formatCurrency(data.base)}</td>
-                                        <td className="px-4 py-2 text-right text-gray-600">{formatCurrency(data.amount)}</td>
-                                        <td className="px-4 py-2 text-right font-medium">{formatCurrency(data.base + data.amount)}</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border border-gray-200 rounded-lg overflow-hidden min-w-[400px]">
+                                <thead className="bg-gray-100 text-xs text-gray-600 uppercase">
+                                    <tr>
+                                        <th className="px-4 py-2">Taux TVA</th>
+                                        <th className="px-4 py-2 text-right">Base HT</th>
+                                        <th className="px-4 py-2 text-right">Montant TVA</th>
+                                        <th className="px-4 py-2 text-right font-bold">Total TTC</th>
                                     </tr>
-                                )})}
-                                <tr className="bg-gray-50 font-bold border-t border-gray-300">
-                                    <td className="px-4 py-3">TOTAL</td>
-                                    <td className="px-4 py-3 text-right">{formatCurrency(viewTotals.totalHT)}</td>
-                                    <td className="px-4 py-3 text-right text-blue-700">{formatCurrency(viewTotals.totalTVA)}</td>
-                                    <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(viewTotals.totalTTC)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {Object.entries(viewTotals.vatBreakdown).sort((a,b) => parseFloat(b[0]) - parseFloat(a[0])).map(([rate, value]) => {
+                                        const data = value as { base: number, amount: number };
+                                        return (
+                                        <tr key={rate} className="hover:bg-gray-50">
+                                            <td className="px-4 py-2 font-bold text-blue-700">{rate}%</td>
+                                            <td className="px-4 py-2 text-right">{formatCurrency(data.base)}</td>
+                                            <td className="px-4 py-2 text-right text-gray-600">{formatCurrency(data.amount)}</td>
+                                            <td className="px-4 py-2 text-right font-medium">{formatCurrency(data.base + data.amount)}</td>
+                                        </tr>
+                                    )})}
+                                    <tr className="bg-gray-50 font-bold border-t border-gray-300">
+                                        <td className="px-4 py-3">TOTAL</td>
+                                        <td className="px-4 py-3 text-right">{formatCurrency(viewTotals.totalHT)}</td>
+                                        <td className="px-4 py-3 text-right text-blue-700">{formatCurrency(viewTotals.totalTVA)}</td>
+                                        <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(viewTotals.totalTTC)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     {/* 2. DÉTAIL DES LIGNES (POUR VÉRIFIER QUEL ARTICLE A QUEL TAUX) */}
@@ -444,82 +446,84 @@ const Accounting = ({
                         </div>
                     </div>
 
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase bg-gray-50">
-                                <th className="px-4 py-2 w-[40%]">Désignation</th>
-                                <th className="px-4 py-2 w-20 text-center">TVA %</th>
-                                <th className="px-4 py-2 w-20 text-center">Qté</th>
-                                <th className="px-4 py-2 w-28 text-right">Prix Unit. HT</th>
-                                <th className="px-4 py-2 w-28 text-right">Total HT</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {invoiceToEdit.items.map(item => (
-                                <tr key={item.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3">
-                                        <input 
-                                            type="text" 
-                                            className="w-full border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none bg-transparent font-medium text-gray-900"
-                                            value={item.name}
-                                            onChange={(e) => updateEditItem(item.id, 'name', e.target.value)}
-                                        />
-                                        <div className="text-xs text-gray-500 mt-1">{item.vintage} {item.color ? `• ${item.color}` : ''}</div>
-                                        {item.isService && <div className="text-[10px] bg-indigo-100 text-indigo-700 px-1 rounded inline-block mt-1">Prestation</div>}
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                       <select 
-                                          className="w-full text-center border border-gray-300 rounded py-1 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-                                          value={item.vatRate !== undefined ? item.vatRate : 20}
-                                          onChange={(e) => updateEditItem(item.id, 'vatRate', e.target.value)}
-                                       >
-                                          <option value="20">20</option>
-                                          <option value="10">10</option>
-                                          <option value="5.5">5.5</option>
-                                          <option value="0">0</option>
-                                       </select>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <input 
-                                            type="number" 
-                                            className="w-16 text-center border border-gray-300 rounded py-1 px-2 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={item.quantity}
-                                            onChange={(e) => updateEditItem(item.id, 'quantity', e.target.value)}
-                                        />
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-1">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[600px]">
+                            <thead>
+                                <tr className="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase bg-gray-50">
+                                    <th className="px-4 py-2 w-[40%]">Désignation</th>
+                                    <th className="px-4 py-2 w-20 text-center">TVA %</th>
+                                    <th className="px-4 py-2 w-20 text-center">Qté</th>
+                                    <th className="px-4 py-2 w-28 text-right">Prix Unit. HT</th>
+                                    <th className="px-4 py-2 w-28 text-right">Total HT</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {invoiceToEdit.items.map(item => (
+                                    <tr key={item.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3">
+                                            <input 
+                                                type="text" 
+                                                className="w-full border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none bg-transparent font-medium text-gray-900"
+                                                value={item.name}
+                                                onChange={(e) => updateEditItem(item.id, 'name', e.target.value)}
+                                            />
+                                            <div className="text-xs text-gray-500 mt-1">{item.vintage} {item.color ? `• ${item.color}` : ''}</div>
+                                            {item.isService && <div className="text-[10px] bg-indigo-100 text-indigo-700 px-1 rounded inline-block mt-1">Prestation</div>}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                           <select 
+                                              className="w-full text-center border border-gray-300 rounded py-1 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                                              value={item.vatRate !== undefined ? item.vatRate : 20}
+                                              onChange={(e) => updateEditItem(item.id, 'vatRate', e.target.value)}
+                                           >
+                                              <option value="20">20</option>
+                                              <option value="10">10</option>
+                                              <option value="5.5">5.5</option>
+                                              <option value="0">0</option>
+                                           </select>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
                                             <input 
                                                 type="number" 
-                                                step="0.01"
-                                                className="w-24 text-right border border-gray-300 rounded py-1 px-2 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                                value={item.sellingPriceHT}
-                                                onChange={(e) => updateEditItem(item.id, 'sellingPriceHT', e.target.value)}
+                                                className="w-16 text-center border border-gray-300 rounded py-1 px-2 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={item.quantity}
+                                                onChange={(e) => updateEditItem(item.id, 'quantity', e.target.value)}
                                             />
-                                            <span className="text-gray-500">€</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-bold text-gray-900">
-                                        {formatCurrency(item.sellingPriceHT * item.quantity)}
-                                    </td>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01"
+                                                    className="w-24 text-right border border-gray-300 rounded py-1 px-2 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    value={item.sellingPriceHT}
+                                                    onChange={(e) => updateEditItem(item.id, 'sellingPriceHT', e.target.value)}
+                                                />
+                                                <span className="text-gray-500">€</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-bold text-gray-900">
+                                            {formatCurrency(item.sellingPriceHT * item.quantity)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="border-t border-gray-200">
+                                    <td colSpan={4} className="px-4 py-3 text-right text-gray-600">Sous-total HT</td>
+                                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(editTotals.ht)}</td>
                                 </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr className="border-t border-gray-200">
-                                <td colSpan={4} className="px-4 py-3 text-right text-gray-600">Sous-total HT</td>
-                                <td className="px-4 py-3 text-right font-medium">{formatCurrency(editTotals.ht)}</td>
-                            </tr>
-                            <tr>
-                                <td colSpan={4} className="px-4 py-2 text-right text-gray-600">Total TVA</td>
-                                <td className="px-4 py-2 text-right font-medium">{formatCurrency(editTotals.tva)}</td>
-                            </tr>
-                            <tr className="bg-gray-50">
-                                <td colSpan={4} className="px-4 py-3 text-right font-bold text-gray-900">Total TTC</td>
-                                <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">{formatCurrency(editTotals.ttc)}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-2 text-right text-gray-600">Total TVA</td>
+                                    <td className="px-4 py-2 text-right font-medium">{formatCurrency(editTotals.tva)}</td>
+                                </tr>
+                                <tr className="bg-gray-50">
+                                    <td colSpan={4} className="px-4 py-3 text-right font-bold text-gray-900">Total TTC</td>
+                                    <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">{formatCurrency(editTotals.ttc)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
 
                 <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
@@ -610,8 +614,8 @@ const Accounting = ({
                  <br/><strong>Note :</strong> Les quantités sont exprimées en <em>nombre de cols (bouteilles)</em>.
               </p>
               
-              <div className="overflow-hidden rounded-lg border border-blue-200 bg-white shadow-sm">
-                 <table className="w-full text-sm text-left">
+              <div className="overflow-x-auto rounded-lg border border-blue-200 bg-white shadow-sm">
+                 <table className="w-full text-sm text-left min-w-[500px]">
                     <thead className="bg-blue-100 text-blue-900 font-semibold uppercase text-xs">
                        <tr>
                           <th className="px-6 py-3">Catégorie / Couleur</th>
@@ -649,8 +653,8 @@ const Accounting = ({
            </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-           <table className="w-full text-left">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+           <table className="w-full text-left min-w-[1000px]">
              <thead className="bg-gray-50 border-b border-gray-200">
                <tr>
                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">N°</th>

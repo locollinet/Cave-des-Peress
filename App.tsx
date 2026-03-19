@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAppController } from './hooks';
 import { Domain, Wine, Client } from './types';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Menu } from 'lucide-react';
 
 // Components
 import Sidebar from './components/Sidebar';
@@ -25,6 +25,7 @@ import ClientModal from './components/ClientModal';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { data, actions } = useAppController();
   
   // --- ÉTATS POUR LE TRANSFERT (Inventaire -> Vente/Achat) ---
@@ -134,14 +135,26 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 flex-col md:flex-row">
       <Sidebar 
         currentView={currentView} 
         onViewChange={setCurrentView} 
         logo={data.logo}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
-      <main className="ml-64 flex-1 p-8 overflow-x-hidden print:ml-0 print:p-0 relative">
+      {/* Mobile Header */}
+      <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-600 hover:text-gray-900 focus:outline-none">
+            <Menu size={24} />
+          </button>
+          <span className="font-bold text-gray-800 truncate">Cave des Peress</span>
+        </div>
+      </div>
+
+      <main className="md:ml-64 flex-1 p-4 md:p-8 overflow-x-hidden print:ml-0 print:p-0 relative">
         {data.isSimulation && (
           <div className="bg-orange-500 text-white px-4 py-2 mb-4 rounded-lg shadow-md flex items-center gap-3 animate-pulse">
             <AlertTriangle className="shrink-0" size={24} />
@@ -152,9 +165,9 @@ function App() {
           </div>
         )}
 
-        <header className="flex justify-between items-center mb-8 print:hidden">
+        <header className="flex justify-between items-center mb-6 md:mb-8 print:hidden">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800">
               {currentView === 'dashboard' && 'Vue d\'ensemble'}
               {currentView === 'projection' && 'Pilotage & Analyse Stratégique'}
               {currentView === 'inventory' && 'Gestion du Stock'}
@@ -234,6 +247,8 @@ function App() {
             onClearInitialSelection={clearTransferSelection}
             onConfirmPurchase={actions.handleReception}
             onCancelPurchase={actions.handleCancelReception}
+            onUpdatePurchaseAmount={actions.handleUpdateReceptionAmount}
+            onUpdateShippingCost={actions.handleUpdateReceptionShippingCost}
             onEditDomain={handleEditDomain}
             onEditWine={handleEditWine}
             onUpdatePayment={actions.handleUpdatePurchasePayment}
@@ -345,6 +360,8 @@ function App() {
           initialData={wineInitialData}
           wines={data.wines}
           domains={data.domains}
+          invoices={data.invoices}
+          clients={data.clients}
           onSave={handleSaveWine}
         />
 

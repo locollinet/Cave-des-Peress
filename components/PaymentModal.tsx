@@ -59,6 +59,7 @@ const PaymentModal = ({
               <option value="Chèque">Chèque</option>
               <option value="Espèces">Espèces</option>
               <option value="Carte Bancaire">Carte Bancaire</option>
+              <option value="Compensation">Compensation</option>
               <option value="Sortie Perso">Sortie Perso (Comptable)</option>
             </select>
           </div>

@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Plus, Trash2, ArrowRight, PackageCheck, AlertCircle, History, X, CheckCircle, Clock, Sparkles, Copy } from 'lucide-react';
 import { Wine, Domain, PurchaseItem, StockMovement } from '../types';
-import { formatCurrency, getColorBadgeClass } from '../utils';
+import { formatCurrency, getColorBadgeClass, getBottleEquivalent } from '../utils';
 import PaymentModal from './PaymentModal';
 
 const Purchases = ({ 
@@ -13,6 +13,8 @@ const Purchases = ({
   onClearInitialSelection, // New Prop
   onConfirmPurchase,
   onCancelPurchase,
+  onUpdatePurchaseAmount,
+  onUpdateShippingCost,
   onEditDomain,
   onEditWine,
   onUpdatePayment 
@@ -22,8 +24,10 @@ const Purchases = ({
   stockMovements: StockMovement[],
   initialSelection?: string[],
   onClearInitialSelection?: () => void,
-  onConfirmPurchase: (provider: string, reference: string, items: PurchaseItem[]) => Promise<boolean>,
+  onConfirmPurchase: (provider: string, reference: string, items: PurchaseItem[], date?: string, shippingCostHT?: number) => Promise<boolean>,
   onCancelPurchase: (movements: StockMovement[]) => Promise<boolean>,
+  onUpdatePurchaseAmount?: (movements: { id: string, newPrice: number }[]) => Promise<boolean>,
+  onUpdateShippingCost?: (provider: string, reference: string, date: string, newShippingCostHT: number) => Promise<boolean>,
   onEditDomain: (id: string) => void,
   onEditWine: (id: string | null, initialData?: Partial<Wine>) => void,
   onUpdatePayment?: (provider: string, reference: string, paymentData: { date: string, method: string }) => Promise<boolean>
@@ -32,10 +36,17 @@ const Purchases = ({
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [provider, setProvider] = useState('');
   const [reference, setReference] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [shippingCostHT, setShippingCostHT] = useState<number>(0);
   
   // Payment Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<{provider: string, reference: string} | null>(null);
+
+  // Edit Total Amount State
+  const [editingTotal, setEditingTotal] = useState<{ id: string, amount: number | string } | null>(null);
+  const [editingShippingCost, setEditingShippingCost] = useState<{ id: string, amount: number | string } | null>(null);
+  const [editingItemPrice, setEditingItemPrice] = useState<{ id: string, price: number | string } | null>(null);
 
   // Filters states similar to Cart
   const [regionFilter, setRegionFilter] = useState('all');
@@ -108,6 +119,7 @@ const Purchases = ({
       reference: string, 
       items: StockMovement[], 
       totalHT: number,
+      totalShippingCost: number,
       paymentStatus: 'Paid' | 'Pending',
       paymentDate?: string,
       paymentMethod?: string
@@ -127,6 +139,7 @@ const Purchases = ({
             reference: refKey,
             items: [],
             totalHT: 0,
+            totalShippingCost: 0,
             paymentStatus: m.paymentStatus || 'Pending',
             paymentDate: m.paymentDate,
             paymentMethod: m.paymentMethod
@@ -135,9 +148,16 @@ const Purchases = ({
 
        groups[key].items.push(m);
        groups[key].totalHT += (m.quantity * (m.price || 0));
+       groups[key].totalShippingCost += (m.shippingCost || 0);
        
        // Priority to Paid status if inconsistent (should not happen if batch updated)
        if (m.paymentStatus === 'Paid') groups[key].paymentStatus = 'Paid';
+    });
+
+    // Round totalHT to 2 decimal places to avoid floating point issues
+    Object.values(groups).forEach(g => {
+        g.totalHT = Math.round(g.totalHT * 100) / 100;
+        g.totalShippingCost = Math.round(g.totalShippingCost * 100) / 100;
     });
 
     return Object.values(groups).sort((a, b) => {
@@ -231,17 +251,20 @@ const Purchases = ({
   };
 
   const totalHT = purchaseItems.reduce((sum, item) => sum + (item.purchasePriceHT * item.quantity), 0);
+  const grandTotalHT = totalHT + (shippingCostHT || 0);
 
   const handleSubmit = async () => {
     if (!provider) return alert('Nom du fournisseur requis');
     if (purchaseItems.length === 0) return alert('La réception est vide');
     
-    const success = await onConfirmPurchase(provider, reference, purchaseItems);
+    const success = await onConfirmPurchase(provider, reference, purchaseItems, purchaseDate, shippingCostHT);
     if (success) {
       alert("Réception validée et stock mis à jour !");
       setPurchaseItems([]);
       setProvider('');
       setReference('');
+      setShippingCostHT(0);
+      setPurchaseDate(new Date().toISOString().split('T')[0]);
       setActiveTab('journal'); 
     }
   };
@@ -265,33 +288,103 @@ const Purchases = ({
       }
   };
 
+  const handleSaveShippingCost = async (entry: any) => {
+      if (!editingShippingCost || !onUpdateShippingCost) return;
+      
+      const newShipping = parseFloat(editingShippingCost.amount.toString());
+      if (isNaN(newShipping) || newShipping < 0) {
+          alert("Montant invalide");
+          return;
+      }
+
+      // Convert date back to YYYY-MM-DD for the API
+      const [day, month, year] = entry.date.split('/');
+      const isoDate = `${year}-${month}-${day}`;
+
+      const success = await onUpdateShippingCost(entry.provider, entry.reference, entry.date, newShipping);
+      if (success) {
+          setEditingShippingCost(null);
+      }
+  };
+
+  const handleSaveTotalAmount = async (entry: any) => {
+      if (!editingTotal || !onUpdatePurchaseAmount) return;
+      
+      const newTotalFacture = parseFloat(editingTotal.amount.toString());
+      if (isNaN(newTotalFacture) || newTotalFacture < 0) {
+          alert("Montant invalide");
+          return;
+      }
+
+      const newTotalVins = newTotalFacture - (entry.totalShippingCost || 0);
+
+      if (newTotalVins < 0) {
+          alert("Le total des vins ne peut pas être négatif (frais de port supérieurs au total).");
+          return;
+      }
+
+      if (entry.totalHT === 0 && newTotalVins > 0) {
+          alert("Impossible de modifier le montant d'une réception à 0€");
+          return;
+      }
+
+      // Calculate the ratio between the new total and the old total
+      const ratio = entry.totalHT > 0 ? newTotalVins / entry.totalHT : 1;
+      
+      // Calculate new prices for each item
+      const updates = entry.items.map((item: any) => ({
+          id: item.id,
+          newPrice: item.price * ratio
+      }));
+
+      const success = await onUpdatePurchaseAmount(updates);
+      if (success) {
+          setEditingTotal(null);
+      }
+  };
+
+  const handleSaveItemPrice = async (movementId: string) => {
+      if (!editingItemPrice || !onUpdatePurchaseAmount) return;
+      
+      const newPrice = parseFloat(editingItemPrice.price.toString());
+      if (isNaN(newPrice) || newPrice < 0) {
+          alert("Prix invalide");
+          return;
+      }
+
+      const success = await onUpdatePurchaseAmount([{ id: movementId, newPrice }]);
+      if (success) {
+          setEditingItemPrice(null);
+      }
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-9rem)] gap-6">
+    <div className="flex flex-col md:h-[calc(100vh-9rem)] gap-6">
        <PaymentModal 
           isOpen={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
           onConfirm={(d, m, r) => handlePaymentConfirm(d, m)} // Ref is optional
        />
 
-       <div className="flex p-1 bg-gray-200 rounded-lg w-fit">
+       <div className="flex p-1 bg-gray-200 rounded-lg w-fit overflow-x-auto max-w-full">
           <button 
              onClick={() => setActiveTab('new')} 
-             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'new' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'new' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
           >
              <PackageCheck size={16} /> Nouvelle Réception
           </button>
           <button 
              onClick={() => setActiveTab('journal')} 
-             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'journal' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'journal' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
           >
              <History size={16} /> Journal des Achats
           </button>
        </div>
 
        {activeTab === 'new' ? (
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-hidden min-h-0">
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 md:overflow-hidden min-h-0">
             {/* LEFT COLUMN: CATALOG */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-[60vh] lg:h-auto">
                 <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50">
                   <div className="flex gap-2">
                       <div className="relative flex-1">
@@ -311,15 +404,15 @@ const Purchases = ({
                       </div>
                       <button 
                         onClick={handleCreateNewWine}
-                        className="px-4 py-2 bg-red-800 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-red-900 shadow-sm transition-colors whitespace-nowrap"
+                        className="px-3 md:px-4 py-2 bg-red-800 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-red-900 shadow-sm transition-colors whitespace-nowrap"
                         title="Créer une nouvelle référence et l'ajouter au bon de réception"
                       >
-                         <Plus size={16} /> Créer Référence
+                         <Plus size={16} /> <span className="hidden sm:inline">Créer Référence</span>
                       </button>
                   </div>
                   
                   {/* Filters */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <select
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none bg-white"
                       value={regionFilter}
@@ -391,7 +484,7 @@ const Purchases = ({
                               <div className="text-sm text-gray-600">
                                 {wine.name} <span className="text-gray-400">| {wine.vintage}</span>
                               </div>
-                              <div className="mt-1 flex gap-2">
+                              <div className="mt-1 flex flex-wrap gap-2">
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getColorBadgeClass(wine.color)}`}>{wine.color}</span>
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">Stock: {wine.stock}</span>
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">P.A.: {formatCurrency(wine.buyingPriceHT)}</span>
@@ -432,7 +525,7 @@ const Purchases = ({
             </div>
 
             {/* RIGHT COLUMN: RECEPTION FORM */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-full overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-[60vh] lg:h-full overflow-hidden">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 shrink-0">
                   <PackageCheck className="text-blue-800" /> 
                   Bon de Réception
@@ -459,6 +552,30 @@ const Purchases = ({
                       onChange={e => setReference(e.target.value)}
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date de la Facture</label>
+                    <input 
+                      type="date" 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      value={purchaseDate}
+                      onChange={e => setPurchaseDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Frais de port HT</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        placeholder="0.00"
+                        value={shippingCostHT || ''}
+                        onChange={e => setShippingCostHT(parseFloat(e.target.value) || 0)}
+                      />
+                      <span className="absolute right-3 top-2 text-gray-500">€</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 min-h-0">
@@ -467,14 +584,19 @@ const Purchases = ({
                       Aucun article sélectionné.<br/>Ajoutez des vins depuis la gauche.
                     </div>
                   ) : (
-                    purchaseItems.map(item => {
-                      const oldStock = Math.max(0, item.stock); 
-                      const oldTotal = oldStock * item.buyingPriceHT;
-                      const newBatchTotal = item.quantity * item.purchasePriceHT;
-                      const newTotalQty = oldStock + item.quantity;
-                      const newCump = newTotalQty > 0 ? (oldTotal + newBatchTotal) / newTotalQty : item.purchasePriceHT;
+                    (() => {
+                      const totalEquivalents = purchaseItems.reduce((sum, i) => sum + (i.quantity * getBottleEquivalent(i.format || 'Bouteille (75cl)')), 0);
+                      return purchaseItems.map(item => {
+                        const itemEquivalents = item.quantity * getBottleEquivalent(item.format || 'Bouteille (75cl)');
+                        const itemShippingCost = totalEquivalents > 0 ? ((shippingCostHT || 0) / totalEquivalents) * itemEquivalents : 0;
 
-                      return (
+                        const oldStock = Math.max(0, item.stock); 
+                        const oldTotal = oldStock * item.buyingPriceHT;
+                        const newBatchTotal = (item.quantity * item.purchasePriceHT) + itemShippingCost;
+                        const newTotalQty = oldStock + item.quantity;
+                        const newCump = newTotalQty > 0 ? (oldTotal + newBatchTotal) / newTotalQty : item.purchasePriceHT;
+
+                        return (
                       <div key={item.id} className="p-3 rounded-lg border border-gray-200 bg-gray-50 text-sm animate-in slide-in-from-right-2 duration-300">
                           <div className="flex justify-between items-start mb-2">
                             <div className="font-medium text-gray-900 w-3/4 line-clamp-2">{item.name}</div>
@@ -504,7 +626,7 @@ const Purchases = ({
                             </div>
                           </div>
                           
-                          {item.purchasePriceHT !== item.buyingPriceHT && (
+                          {(item.purchasePriceHT !== item.buyingPriceHT || itemShippingCost > 0) && (
                             <div className="flex items-start gap-1.5 text-xs bg-yellow-50 text-yellow-800 p-2 rounded border border-yellow-100">
                                 <AlertCircle size={14} className="mt-0.5 shrink-0" />
                                 <div>
@@ -514,16 +636,26 @@ const Purchases = ({
                             </div>
                           )}
                       </div>
-                    )})
-                  )}
-                </div>
+                    );
+                  })
+                })()
+              )}
+            </div>
 
                 <div className="border-t border-gray-200 pt-4 bg-gray-50 p-4 rounded-lg mb-4 shrink-0">
-                  <div className="flex justify-between text-lg font-bold text-gray-900">
-                    <span>Total Réception HT</span>
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Total Vins HT</span>
                     <span>{formatCurrency(totalHT)}</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Le stock sera incrémenté et le P.A. moyen recalculé automatiquement.</p>
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Frais de port HT</span>
+                    <span>{formatCurrency(shippingCostHT || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold text-gray-900 border-t border-gray-200 pt-2">
+                    <span>Total Facture HT</span>
+                    <span>{formatCurrency(grandTotalHT)}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Le stock sera incrémenté et le P.A. moyen recalculé automatiquement (frais de port inclus).</p>
                 </div>
                 
                 <button 
@@ -546,20 +678,22 @@ const Purchases = ({
                </div>
             </div>
             <div className="flex-1 overflow-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-left min-w-[800px]">
                 <thead className="bg-gray-100 sticky top-0 z-10 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Fournisseur</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Référence</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total HT (Est.)</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total Vins HT</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Frais de Port HT</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total Facture HT</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Statut Paiement</th>
                     <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                    {purchaseJournal.length === 0 ? (
-                     <tr><td colSpan={6} className="p-8 text-center text-gray-400 italic">Aucune réception enregistrée pour le moment.</td></tr>
+                     <tr><td colSpan={8} className="p-8 text-center text-gray-400 italic">Aucune réception enregistrée pour le moment.</td></tr>
                    ) : (
                      purchaseJournal.map(entry => (
                         <React.Fragment key={entry.id}>
@@ -569,8 +703,80 @@ const Purchases = ({
                               <td className="px-6 py-4 text-sm text-gray-600">
                                  {entry.reference !== 'Sans Ref' ? <span className="bg-gray-100 px-2 py-1 rounded border border-gray-200">{entry.reference}</span> : <span className="text-gray-400 italic">-</span>}
                               </td>
-                              <td className="px-6 py-4 text-sm text-right font-bold text-gray-900">
+                              <td className="px-6 py-4 text-sm text-right text-gray-600">
                                  {formatCurrency(entry.totalHT)}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-right text-gray-600">
+                                 {editingShippingCost?.id === entry.id ? (
+                                    <div className="flex items-center justify-end gap-2">
+                                       <input
+                                          type="number"
+                                          className="w-24 px-2 py-1 text-sm border border-gray-300 rounded"
+                                          value={editingShippingCost.amount}
+                                          onChange={(e) => setEditingShippingCost({ ...editingShippingCost, amount: e.target.value })}
+                                          step="0.01"
+                                       />
+                                       <button
+                                          onClick={() => handleSaveShippingCost(entry)}
+                                          className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                       >
+                                          <CheckCircle size={16} />
+                                       </button>
+                                       <button
+                                          onClick={() => setEditingShippingCost(null)}
+                                          className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                       >
+                                          <X size={16} />
+                                       </button>
+                                    </div>
+                                 ) : (
+                                    <div className="flex items-center justify-end gap-2 group/edit-shipping">
+                                       <span>{formatCurrency(entry.totalShippingCost || 0)}</span>
+                                       <button
+                                          onClick={() => setEditingShippingCost({ id: entry.id, amount: entry.totalShippingCost || 0 })}
+                                          className="p-1 text-gray-400 opacity-0 group-hover/edit-shipping:opacity-100 hover:text-blue-600 transition-all"
+                                          title="Modifier les frais de port"
+                                       >
+                                          <Sparkles size={14} />
+                                       </button>
+                                    </div>
+                                 )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-right font-bold text-gray-900">
+                                 {editingTotal?.id === entry.id ? (
+                                    <div className="flex items-center justify-end gap-2">
+                                       <input
+                                          type="number"
+                                          className="w-24 px-2 py-1 text-sm border border-gray-300 rounded"
+                                          value={editingTotal.amount}
+                                          onChange={(e) => setEditingTotal({ ...editingTotal, amount: e.target.value })}
+                                          step="0.01"
+                                       />
+                                       <button
+                                          onClick={() => handleSaveTotalAmount(entry)}
+                                          className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                       >
+                                          <CheckCircle size={16} />
+                                       </button>
+                                       <button
+                                          onClick={() => setEditingTotal(null)}
+                                          className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                       >
+                                          <X size={16} />
+                                       </button>
+                                    </div>
+                                 ) : (
+                                    <div className="flex items-center justify-end gap-2 group/edit">
+                                       <span>{formatCurrency(entry.totalHT + (entry.totalShippingCost || 0))}</span>
+                                       <button
+                                          onClick={() => setEditingTotal({ id: entry.id, amount: entry.totalHT + (entry.totalShippingCost || 0) })}
+                                          className="p-1 text-gray-400 opacity-0 group-hover/edit:opacity-100 hover:text-blue-600 transition-all"
+                                          title="Modifier le montant total facture"
+                                       >
+                                          <Sparkles size={14} />
+                                       </button>
+                                    </div>
+                                 )}
                               </td>
                               <td className="px-6 py-4 text-center">
                                  {entry.paymentStatus === 'Paid' ? (
@@ -597,15 +803,49 @@ const Purchases = ({
                               </td>
                            </tr>
                            <tr className="bg-gray-50 border-b border-gray-100">
-                              <td colSpan={6} className="px-6 py-2 pb-4">
+                              <td colSpan={8} className="px-6 py-2 pb-4">
                                  <div className="pl-4 border-l-2 border-gray-300">
                                     <p className="text-xs font-bold text-gray-500 uppercase mb-2">Détail des vins reçus :</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                                        {entry.items.map(m => (
-                                          <div key={m.id} className="flex justify-between items-center text-xs bg-white p-2 rounded border border-gray-200">
+                                          <div key={m.id} className="flex justify-between items-center text-xs bg-white p-2 rounded border border-gray-200 group/item">
                                              <div className="truncate pr-2" title={m.wineName}>{m.wineName}</div>
-                                             <div className="whitespace-nowrap font-medium">
-                                                +{m.quantity} <span className="text-gray-400">x</span> {formatCurrency(m.price || 0)}
+                                             <div className="whitespace-nowrap font-medium flex items-center gap-2">
+                                                +{m.quantity} <span className="text-gray-400">x</span> 
+                                                {editingItemPrice?.id === m.id ? (
+                                                   <div className="flex items-center gap-1">
+                                                      <input
+                                                         type="number"
+                                                         className="w-16 px-1 py-0.5 text-xs border border-gray-300 rounded"
+                                                         value={editingItemPrice.price}
+                                                         onChange={(e) => setEditingItemPrice({ ...editingItemPrice, price: e.target.value })}
+                                                         step="0.01"
+                                                      />
+                                                      <button
+                                                         onClick={() => handleSaveItemPrice(m.id)}
+                                                         className="text-green-600 hover:bg-green-50 rounded"
+                                                      >
+                                                         <CheckCircle size={14} />
+                                                      </button>
+                                                      <button
+                                                         onClick={() => setEditingItemPrice(null)}
+                                                         className="text-gray-400 hover:bg-gray-100 rounded"
+                                                      >
+                                                         <X size={14} />
+                                                      </button>
+                                                   </div>
+                                                ) : (
+                                                   <div className="flex items-center gap-1">
+                                                      <span>{formatCurrency(m.price || 0)}</span>
+                                                      <button
+                                                         onClick={() => setEditingItemPrice({ id: m.id, price: m.price || 0 })}
+                                                         className="text-gray-400 opacity-0 group-hover/item:opacity-100 hover:text-blue-600 transition-all"
+                                                         title="Modifier le prix d'achat"
+                                                      >
+                                                         <Sparkles size={12} />
+                                                      </button>
+                                                   </div>
+                                                )}
                                              </div>
                                           </div>
                                        ))}

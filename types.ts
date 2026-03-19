@@ -82,6 +82,8 @@ export interface StockMovement {
   paymentStatus?: 'Paid' | 'Pending';
   paymentDate?: string;
   paymentMethod?: string;
+  // Frais de port (Nouveau)
+  shippingCost?: number; // Frais de port alloués à ce mouvement
 }
 
 export interface Client {

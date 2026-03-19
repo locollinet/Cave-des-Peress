@@ -178,9 +178,9 @@ const Clients = ({
   ).sort((a,b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="flex h-[calc(100vh-100px)] gap-6">
+    <div className="flex flex-col md:flex-row md:h-[calc(100vh-100px)] gap-6">
       {/* Client List */}
-      <div className="w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col">
+      <div className={`w-full md:w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col ${selectedClientId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-100 bg-gray-50">
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -243,7 +243,7 @@ const Clients = ({
           <>
             {/* Header / Info */}
             <div className="p-6 border-b border-gray-200 bg-gray-50">
-              <div className="flex justify-between items-start mb-4">
+              <div className="flex flex-col md:flex-row justify-between items-start mb-4 gap-4">
                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2 group">
                    {selectedClient.name}
                    <button 
@@ -255,24 +255,30 @@ const Clients = ({
                    </button>
                 </h2>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto">
+                  <button 
+                    onClick={() => setSelectedClientId(null)}
+                    className="md:hidden px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium border border-gray-200 hover:bg-gray-200 flex items-center gap-2 flex-1 justify-center"
+                  >
+                    <ArrowLeft size={16} /> Retour
+                  </button>
                   <button 
                     onClick={handleDeleteClick}
-                    className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium border border-red-100 hover:bg-red-100 flex items-center gap-2"
+                    className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium border border-red-100 hover:bg-red-100 flex items-center gap-2 flex-1 md:flex-none justify-center"
                     title="Supprimer le client"
                   >
                     <Trash2 size={16} />
                   </button>
                   <button 
                     onClick={() => onEditClient(selectedClient.id)}
-                    className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50"
+                    className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50 flex-1 md:flex-none justify-center"
                   >
                     Modifier
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center gap-2 text-gray-600 mb-1">
@@ -355,11 +361,13 @@ const Clients = ({
                   Aucun stock en dépôt chez ce client.
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[600px]">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs text-gray-500 uppercase">
                       <th className="py-2 pl-2">Vin</th>
-                      <th className="py-2 text-center">Quantité</th>
+                      <th className="py-2 text-center">En Stock</th>
+                      <th className="py-2 text-center">Vendu</th>
                       <th className="py-2 text-right">Valeur Vente HT</th>
                       <th className="py-2 text-right pr-2">Actions</th>
                     </tr>
@@ -378,6 +386,12 @@ const Clients = ({
                       if (!wine) return null;
                       
                       const unitPrice = getSellingPrice(wine, domain);
+                      
+                      const soldQuantity = invoices
+                        .filter(inv => inv.clientId === selectedClient.id && inv.type === 'FACTURE')
+                        .flatMap(inv => inv.items)
+                        .filter(item => item.id === stockItem.wineId && item.fromExternalStock)
+                        .reduce((acc, item) => acc + item.quantity, 0);
                       
                       return (
                         <tr key={stockItem.wineId} className="hover:bg-gray-50">
@@ -415,6 +429,9 @@ const Clients = ({
                           <td className="py-3 text-center font-bold text-gray-800 bg-orange-50 rounded-lg">
                             {stockItem.quantity}
                           </td>
+                          <td className="py-3 text-center text-gray-600 font-medium">
+                            {soldQuantity}
+                          </td>
                           <td className="py-3 text-right text-gray-600">
                             {formatCurrency(unitPrice * stockItem.quantity)}
                           </td>
@@ -424,8 +441,21 @@ const Clients = ({
                                 onClick={() => handleReturnStock(stockItem.wineId, stockItem.quantity)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" 
                                 title="Retour de stock (Invendus)"
+                                disabled={stockItem.quantity === 0}
                               >
-                                <ArrowLeft size={16} />
+                                <ArrowLeft size={16} className={stockItem.quantity === 0 ? 'opacity-50' : ''} />
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (window.confirm("Êtes-vous sûr de vouloir supprimer cette ligne de stock déporté ?")) {
+                                    const newExternalStock = selectedClient.externalStock.filter(s => s.wineId !== stockItem.wineId);
+                                    onUpdateClient({ ...selectedClient, externalStock: newExternalStock });
+                                  }
+                                }}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded" 
+                                title="Supprimer la ligne"
+                              >
+                                <Trash2 size={16} />
                               </button>
                             </div>
                           </td>
@@ -434,6 +464,7 @@ const Clients = ({
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
             )}
@@ -447,8 +478,8 @@ const Clients = ({
                        Aucune facture ou devis trouvé pour ce client.
                     </div>
                  ) : (
-                    <div className="overflow-hidden border border-gray-200 rounded-lg">
-                       <table className="w-full text-left">
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                       <table className="w-full text-left min-w-[600px]">
                           <thead className="bg-gray-50 border-b border-gray-200">
                              <tr>
                                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">N°</th>
@@ -592,8 +623,8 @@ const Clients = ({
                Saisissez les quantités consommées (vendues) pour chaque référence. Le prix unitaire est modifiable ici sans affecter le catalogue.
             </div>
 
-            <div className="flex-1 overflow-y-auto">
-               <table className="w-full text-left">
+            <div className="flex-1 overflow-y-auto overflow-x-auto">
+               <table className="w-full text-left min-w-[800px]">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                      <tr>
                         <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Vin / Domaine</th>

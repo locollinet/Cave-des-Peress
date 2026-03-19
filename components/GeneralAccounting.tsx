@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Trash2, Calendar, FileText, TrendingDown, TrendingUp, DollarSign, PieChart, CreditCard, Landmark, Settings, X, Pencil } from 'lucide-react';
+import { Plus, Trash2, Calendar, FileText, TrendingDown, TrendingUp, DollarSign, PieChart, CreditCard, Landmark, Settings, X, Pencil, Copy, Search } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Expense, Invoice, StockMovement, ExpenseCategory } from '../types';
 import { formatCurrency } from '../utils';
@@ -48,6 +48,7 @@ const GeneralAccounting = ({
   const [provider, setProvider] = useState('');
   const [category, setCategory] = useState('');
   const [customCategory, setCustomCategory] = useState('');
+  const [expenseSearch, setExpenseSearch] = useState('');
   const [description, setDescription] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CB');
 
@@ -149,6 +150,28 @@ const GeneralAccounting = ({
           setCategory('Autre');
           setCustomCategory(exp.category);
       }
+  };
+
+  const handleDuplicateExpense = (exp: Expense) => {
+      setEditId(null); // Null ID means it will create a new one
+      setDate(new Date().toISOString().split('T')[0]); // Default to today
+      setProvider(exp.provider);
+      setCategory(exp.category);
+      setDescription(exp.description || '');
+      setPaymentMethod(exp.paymentMethod);
+      
+      setVatMode('simple');
+      setSimpleTTC(exp.amountTTC.toString());
+      setManualTVA(exp.amountTVA.toString());
+      
+      const exists = categories.some(c => c.label === exp.category);
+      if (!exists && exp.category !== 'Autre') {
+          setCategory('Autre');
+          setCustomCategory(exp.category);
+      }
+      
+      // Scroll to top to see the form
+      window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -284,23 +307,36 @@ const GeneralAccounting = ({
     };
   }, [expenses, reportYear]);
 
+  const filteredExpenses = useMemo(() => {
+    if (!expenseSearch) return expenses;
+    const lowerSearch = expenseSearch.toLowerCase();
+    return expenses.filter(exp => 
+      exp.provider.toLowerCase().includes(lowerSearch) || 
+      exp.category.toLowerCase().includes(lowerSearch)
+    );
+  }, [expenses, expenseSearch]);
+
+  const filteredExpensesTotalHT = useMemo(() => filteredExpenses.reduce((sum, exp) => sum + exp.amountHT, 0), [filteredExpenses]);
+  const filteredExpensesTotalTVA = useMemo(() => filteredExpenses.reduce((sum, exp) => sum + exp.amountTVA, 0), [filteredExpenses]);
+  const filteredExpensesTotalTTC = useMemo(() => filteredExpenses.reduce((sum, exp) => sum + exp.amountTTC, 0), [filteredExpenses]);
+
   return (
     <div className="space-y-6">
       
       {/* Header Navigation */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-         <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+         <div className="flex flex-wrap gap-2 w-full md:w-auto">
             <button 
                onClick={() => setActiveTab('journal')}
-               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'journal' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
+               className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'journal' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-               <FileText size={18} /> Journal des Dépenses
+               <FileText size={18} /> <span className="hidden sm:inline">Journal des Dépenses</span><span className="sm:hidden">Journal</span>
             </button>
             <button 
                onClick={() => setActiveTab('report')}
-               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'report' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
+               className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'report' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-               <PieChart size={18} /> Bilan Financier
+               <PieChart size={18} /> <span className="hidden sm:inline">Bilan Financier</span><span className="sm:hidden">Bilan</span>
             </button>
          </div>
          {activeTab === 'report' && (
@@ -484,11 +520,43 @@ const GeneralAccounting = ({
 
            {/* Liste des Dépenses */}
            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                 <h3 className="font-bold text-gray-800">Historique des frais généraux</h3>
+              <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center gap-4 flex-wrap">
+                 <h3 className="font-bold text-gray-800 whitespace-nowrap">Historique des frais généraux</h3>
+                 
+                 <div className="flex items-center gap-4 flex-1 justify-end min-w-[300px]">
+                    <div className="relative flex-1 max-w-xs">
+                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                       <input 
+                          type="text" 
+                          placeholder="Filtrer par fournisseur ou catégorie..." 
+                          className="w-full pl-9 pr-4 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={expenseSearch}
+                          onChange={e => setExpenseSearch(e.target.value)}
+                       />
+                       {expenseSearch && (
+                          <button onClick={() => setExpenseSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                             <X size={14} />
+                          </button>
+                       )}
+                    </div>
+                    
+                    {expenseSearch && (
+                       <div className="flex items-center gap-3 text-sm bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                          <div className="flex flex-col items-end">
+                             <span className="text-xs text-indigo-600 font-medium">Total filtré HT</span>
+                             <span className="font-bold text-indigo-900">{formatCurrency(filteredExpensesTotalHT)}</span>
+                          </div>
+                          <div className="w-px h-8 bg-indigo-200"></div>
+                          <div className="flex flex-col items-end">
+                             <span className="text-xs text-indigo-600 font-medium">Total filtré TTC</span>
+                             <span className="font-bold text-indigo-900">{formatCurrency(filteredExpensesTotalTTC)}</span>
+                          </div>
+                       </div>
+                    )}
+                 </div>
               </div>
               <div className="flex-1 overflow-auto max-h-[600px]">
-                 <table className="w-full text-left text-sm">
+                 <table className="w-full text-left text-sm min-w-[600px]">
                     <thead className="bg-gray-50 text-gray-500 font-semibold sticky top-0 z-10 border-b border-gray-200">
                        <tr>
                           <th className="px-4 py-3">Date</th>
@@ -500,10 +568,10 @@ const GeneralAccounting = ({
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                       {expenses.length === 0 ? (
-                          <tr><td colSpan={6} className="p-8 text-center text-gray-400 italic">Aucune dépense enregistrée.</td></tr>
+                       {filteredExpenses.length === 0 ? (
+                          <tr><td colSpan={6} className="p-8 text-center text-gray-400 italic">Aucune dépense trouvée.</td></tr>
                        ) : (
-                          expenses.map(exp => (
+                          filteredExpenses.map(exp => (
                              <tr key={exp.id} className="hover:bg-gray-50 group">
                                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{new Date(exp.date).toLocaleDateString()}</td>
                                 <td className="px-4 py-3">
@@ -518,6 +586,7 @@ const GeneralAccounting = ({
                                 <td className={`px-4 py-3 text-right font-bold ${exp.amountTTC < 0 ? 'text-red-600' : 'text-gray-800'}`}>{formatCurrency(exp.amountTTC)}</td>
                                 <td className="px-4 py-3 text-center">
                                    <div className="flex items-center justify-center gap-2">
+                                      <button onClick={() => handleDuplicateExpense(exp)} className="text-emerald-500 hover:text-emerald-700 p-1" title="Dupliquer"><Copy size={16} /></button>
                                       <button onClick={() => handleEditExpense(exp)} className="text-blue-400 hover:text-blue-600 p-1" title="Modifier"><Pencil size={16} /></button>
                                       <button onClick={() => onDeleteExpense(exp.id)} className="text-red-400 hover:text-red-600 p-1" title="Supprimer"><Trash2 size={16} /></button>
                                    </div>
@@ -610,20 +679,22 @@ const GeneralAccounting = ({
                  <div className="p-4 bg-gray-50 border-b border-gray-200">
                     <h4 className="font-bold text-gray-800">Répartition des Frais Généraux</h4>
                  </div>
-                 <table className="w-full text-sm">
-                    <tbody className="divide-y divide-gray-100">
-                       {(Object.entries(reportData.expensesDetail) as [string, number][]).sort((a,b) => b[1] - a[1]).map(([cat, amount]) => (
-                          <tr key={cat} className="hover:bg-gray-50">
-                             <td className="px-6 py-3 text-gray-600">{cat}</td>
-                             <td className="px-6 py-3 text-right font-medium text-gray-900">{formatCurrency(amount)}</td>
-                             <td className="px-6 py-3 text-right text-xs text-gray-400 w-16">{reportData.overheadHT > 0 ? Math.round((amount / reportData.overheadHT) * 100) + '%' : '0%'}</td>
-                          </tr>
-                       ))}
-                       {Object.keys(reportData.expensesDetail).length === 0 && (
-                          <tr><td colSpan={3} className="p-6 text-center text-gray-400 italic">Aucune dépense cette année.</td></tr>
-                       )}
-                    </tbody>
-                 </table>
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[400px]">
+                       <tbody className="divide-y divide-gray-100">
+                          {(Object.entries(reportData.expensesDetail) as [string, number][]).sort((a,b) => b[1] - a[1]).map(([cat, amount]) => (
+                             <tr key={cat} className="hover:bg-gray-50">
+                                <td className="px-6 py-3 text-gray-600">{cat}</td>
+                                <td className="px-6 py-3 text-right font-medium text-gray-900">{formatCurrency(amount)}</td>
+                                <td className="px-6 py-3 text-right text-xs text-gray-400 w-16">{reportData.overheadHT > 0 ? Math.round((amount / reportData.overheadHT) * 100) + '%' : '0%'}</td>
+                             </tr>
+                          ))}
+                          {Object.keys(reportData.expensesDetail).length === 0 && (
+                             <tr><td colSpan={3} className="p-6 text-center text-gray-400 italic">Aucune dépense cette année.</td></tr>
+                          )}
+                       </tbody>
+                    </table>
+                 </div>
               </div>
 
               {/* Bilan TVA */}

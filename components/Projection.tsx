@@ -268,7 +268,7 @@ const Projection = ({
                Ces vins représentent de la trésorerie immobilisée. Ils n'ont pas enregistré de sortie depuis plus de 6 mois.
             </p>
             <div className="overflow-x-auto">
-               <table className="w-full text-sm text-left">
+               <table className="w-full text-sm text-left min-w-[400px]">
                   <thead className="bg-red-50 text-red-900 uppercase text-xs">
                      <tr>
                         <th className="px-4 py-2 rounded-l-lg">Vin</th>

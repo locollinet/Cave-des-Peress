@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wine, Domain, Invoice, StockMovement, Client, CartItem, PurchaseItem, Expense, ExpenseCategory, WineColor } from './types';
 import { api } from './api';
-import { calculateInvoiceTotals } from './utils'; // Import du calculateur centralisé
+import { calculateInvoiceTotals, getBottleEquivalent } from './utils'; // Import du calculateur centralisé
 
 const DEFAULT_CATEGORIES = [
   'Achat Marchandise (Vin)',
@@ -138,34 +138,28 @@ export const useAppController = () => {
     }
   };
 
-  const handleReception = async (provider: string, reference: string, items: PurchaseItem[]) => {
+  const handleReception = async (provider: string, reference: string, items: PurchaseItem[], date?: string, shippingCostHT: number = 0) => {
     // Audit Correction: Split Preparation vs Execution to avoid partial updates
     const movementsToCreate: StockMovement[] = [];
     const winesToUpdate: Wine[] = [];
-    const now = new Date().toISOString();
+    const now = date ? new Date(date).toISOString() : new Date().toISOString();
+
+    // Calculer le total des équivalents bouteilles pour la ventilation des frais de port
+    const totalEquivalents = items.reduce((sum, item) => {
+      const currentWine = wines.find(w => w.id === item.id);
+      const format = currentWine?.format || 'Bouteille (75cl)';
+      return sum + (item.quantity * getBottleEquivalent(format));
+    }, 0);
 
     // 1. Prepare Data Logic (No Side Effects yet)
     for (const item of items) {
       const currentWine = wines.find(w => w.id === item.id);
       if (currentWine) {
-        const oldStock = Math.max(0, currentWine.stock);
-        const oldTotalValue = oldStock * currentWine.buyingPriceHT;
-        const newBatchValue = item.quantity * item.purchasePriceHT;
-        const newTotalQty = oldStock + item.quantity;
-        
-        let newWeightedPrice = currentWine.buyingPriceHT;
-        if (newTotalQty > 0) {
-          newWeightedPrice = (oldTotalValue + newBatchValue) / newTotalQty;
-        }
+        const format = currentWine.format || 'Bouteille (75cl)';
+        const itemEquivalents = item.quantity * getBottleEquivalent(format);
+        const itemShippingCost = totalEquivalents > 0 ? (shippingCostHT / totalEquivalents) * itemEquivalents : 0;
 
-        const updatedWine: Wine = {
-          ...currentWine,
-          stock: currentWine.stock + item.quantity,
-          buyingPriceHT: parseFloat(newWeightedPrice.toFixed(4))
-        };
-        winesToUpdate.push(updatedWine);
-
-        movementsToCreate.push({
+        const newMovement: StockMovement = {
           id: `mv_in_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
           date: now,
           wineId: item.id,
@@ -176,8 +170,49 @@ export const useAppController = () => {
           price: item.purchasePriceHT,
           provider: provider,
           reference: reference,
-          paymentStatus: 'Pending'
-        });
+          paymentStatus: 'Pending',
+          shippingCost: itemShippingCost
+        };
+        movementsToCreate.push(newMovement);
+
+        // Recalculate CUMP
+        const wineMovements = [...stockMovements, newMovement]
+          .filter(m => m.wineId === item.id)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        let stock = 0;
+        let totalValue = 0;
+
+        for (const m of wineMovements) {
+          if (m.type === 'IN') {
+            const qty = m.quantity;
+            const price = m.price || 0;
+            const shipping = m.shippingCost || 0;
+            stock += qty;
+            totalValue += (qty * price) + shipping;
+          } else if (m.type === 'OUT' || m.type === 'TRANSFER') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock -= m.quantity;
+            totalValue -= (m.quantity * cump);
+          } else if (m.type === 'ADJUST') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock += m.quantity; // m.quantity can be positive or negative
+            totalValue += (m.quantity * cump);
+          }
+          if (stock <= 0) {
+            stock = 0;
+            totalValue = 0;
+          }
+        }
+
+        const newCump = stock > 0 ? totalValue / stock : 0;
+
+        const updatedWine: Wine = {
+          ...currentWine,
+          stock: Math.max(0, stock),
+          buyingPriceHT: parseFloat(newCump.toFixed(4))
+        };
+        winesToUpdate.push(updatedWine);
       }
     }
 
@@ -191,11 +226,7 @@ export const useAppController = () => {
       await Promise.all(winesToUpdate.map(w => api.updateWine(w)));
 
       // Step C: Update Local State
-      setWines(prev => prev.map(w => {
-         const update = winesToUpdate.find(u => u.id === w.id);
-         return update || w;
-      }));
-      setStockMovements(prev => [...movementsToCreate, ...prev]);
+      await fetchData();
       
       return true;
 
@@ -227,42 +258,246 @@ export const useAppController = () => {
      }
   };
 
-  const handleCancelReception = async (movementsToCancel: StockMovement[]) => {
+  const handleUpdateReceptionShippingCost = async (provider: string, reference: string, date: string, newShippingCostHT: number) => {
     try {
-      for (const move of movementsToCancel) {
-        if (move.type === 'IN' && move.price !== undefined) {
-           const wine = wines.find(w => w.id === move.wineId);
-           if (wine) {
-              const currentTotalValue = wine.stock * wine.buyingPriceHT;
-              const valueToRemove = move.quantity * move.price;
-              const prevStock = wine.stock - move.quantity;
-              
-              let prevPrice = wine.buyingPriceHT;
-              
-              if (prevStock > 0) {
-                 const prevTotalValue = currentTotalValue - valueToRemove;
-                 const safeTotalValue = Math.max(0, prevTotalValue);
-                 prevPrice = safeTotalValue / prevStock;
-              } else if (prevStock === 0) {
-                 prevPrice = wine.buyingPriceHT; 
-              }
+      // 1. Find all IN movements for this invoice
+      const invoiceMovements = stockMovements.filter(m => 
+        m.type === 'IN' && 
+        m.provider === provider && 
+        m.reference === reference && 
+        new Date(m.date).toLocaleDateString('fr-FR') === date
+      );
 
-              const updatedWine: Wine = {
-                 ...wine,
-                 stock: Math.max(0, prevStock),
-                 buyingPriceHT: parseFloat(prevPrice.toFixed(4))
-              };
+      if (invoiceMovements.length === 0) return false;
 
-              await api.updateWine(updatedWine);
-              await api.deleteMovement(move.id);
+      // 2. Calculate total bottle equivalents for this invoice
+      const totalEquivalents = invoiceMovements.reduce((sum, m) => {
+        const currentWine = wines.find(w => w.id === m.wineId);
+        const format = currentWine?.format || 'Bouteille (75cl)';
+        return sum + (m.quantity * getBottleEquivalent(format));
+      }, 0);
 
-              setWines(prev => prev.map(w => w.id === wine.id ? updatedWine : w));
-           }
+      // 3. Prepare updates
+      const updatedMovementsMap = new Map<string, StockMovement>();
+      const affectedWineIds = new Set<string>();
+
+      for (const m of invoiceMovements) {
+        const currentWine = wines.find(w => w.id === m.wineId);
+        const format = currentWine?.format || 'Bouteille (75cl)';
+        const itemEquivalents = m.quantity * getBottleEquivalent(format);
+        const itemShippingCost = totalEquivalents > 0 ? (newShippingCostHT / totalEquivalents) * itemEquivalents : 0;
+
+        updatedMovementsMap.set(m.id, { ...m, shippingCost: itemShippingCost });
+        affectedWineIds.add(m.wineId);
+        
+        // Update DB
+        await api.updateMovementShippingCost(m.id, itemShippingCost);
+      }
+
+      // 4. Recalculate CUMP for affected wines
+      const winesToUpdate: Wine[] = [];
+      const allMovementsUpdated = stockMovements.map(m => updatedMovementsMap.has(m.id) ? updatedMovementsMap.get(m.id)! : m);
+
+      for (const wineId of affectedWineIds) {
+        const currentWine = wines.find(w => w.id === wineId);
+        if (!currentWine) continue;
+
+        const wineMovements = allMovementsUpdated
+          .filter(m => m.wineId === wineId)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        let stock = 0;
+        let totalValue = 0;
+
+        for (const m of wineMovements) {
+          if (m.type === 'IN') {
+            const qty = m.quantity;
+            const price = m.price || 0;
+            const shipping = m.shippingCost || 0;
+            stock += qty;
+            totalValue += (qty * price) + shipping;
+          } else if (m.type === 'OUT' || m.type === 'TRANSFER') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock -= m.quantity;
+            totalValue -= (m.quantity * cump);
+          } else if (m.type === 'ADJUST') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock += m.quantity; // m.quantity can be positive or negative
+            totalValue += (m.quantity * cump);
+          }
+          if (stock <= 0) {
+            stock = 0;
+            totalValue = 0;
+          }
+        }
+
+        const newCump = stock > 0 ? totalValue / stock : 0;
+        
+        winesToUpdate.push({
+          ...currentWine,
+          buyingPriceHT: parseFloat(newCump.toFixed(4))
+        });
+      }
+
+      // 5. Update wines in DB
+      for (const w of winesToUpdate) {
+        await api.updateWine(w);
+      }
+
+      // 6. Refresh local state
+      await fetchData();
+      return true;
+
+    } catch (e: any) {
+      console.error(e);
+      alert("Erreur lors de la mise à jour des frais de port : " + (e.message || e));
+      return false;
+    }
+  };
+
+  const handleUpdateReceptionAmount = async (movementsToUpdate: { id: string, newPrice: number }[]) => {
+    try {
+      const updatedWinesMap = new Map<string, Wine>();
+      const affectedWineIds = new Set<string>();
+      const updatedMovementsMap = new Map<string, StockMovement>();
+
+      for (const update of movementsToUpdate) {
+        const move = stockMovements.find(m => m.id === update.id);
+        if (move && move.type === 'IN' && move.price !== undefined && move.price !== update.newPrice) {
+           updatedMovementsMap.set(move.id, { ...move, price: update.newPrice });
+           affectedWineIds.add(move.wineId);
+           await api.updateMovementPrice(move.id, update.newPrice);
         }
       }
       
-      const m = await api.fetchMovements();
-      setStockMovements(m);
+      // Recalculate CUMP for affected wines
+      const winesToUpdate: Wine[] = [];
+      const allMovementsUpdated = stockMovements.map(m => updatedMovementsMap.has(m.id) ? updatedMovementsMap.get(m.id)! : m);
+
+      for (const wineId of affectedWineIds) {
+        const currentWine = wines.find(w => w.id === wineId);
+        if (!currentWine) continue;
+
+        const wineMovements = allMovementsUpdated
+          .filter(m => m.wineId === wineId)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        let stock = 0;
+        let totalValue = 0;
+
+        for (const m of wineMovements) {
+          if (m.type === 'IN') {
+            const qty = m.quantity;
+            const price = m.price || 0;
+            const shipping = m.shippingCost || 0;
+            stock += qty;
+            totalValue += (qty * price) + shipping;
+          } else if (m.type === 'OUT' || m.type === 'TRANSFER') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock -= m.quantity;
+            totalValue -= (m.quantity * cump);
+          } else if (m.type === 'ADJUST') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock += m.quantity; // m.quantity can be positive or negative
+            totalValue += (m.quantity * cump);
+          }
+          if (stock <= 0) {
+            stock = 0;
+            totalValue = 0;
+          }
+        }
+
+        const newCump = stock > 0 ? totalValue / stock : 0;
+        
+        winesToUpdate.push({
+          ...currentWine,
+          buyingPriceHT: parseFloat(newCump.toFixed(4))
+        });
+      }
+
+      // Update wines in DB
+      for (const w of winesToUpdate) {
+        await api.updateWine(w);
+      }
+
+      // Refresh local state
+      await fetchData();
+      return true;
+
+    } catch(e: any) {
+       console.error(e);
+       alert("Erreur mise à jour réception: " + e.message);
+       fetchData(); 
+       return false;
+    }
+  };
+
+  const handleCancelReception = async (movementsToCancel: StockMovement[]) => {
+    try {
+      const affectedWineIds = new Set<string>();
+      const canceledMovementIds = new Set<string>();
+
+      for (const move of movementsToCancel) {
+        if (move.type === 'IN' && move.price !== undefined) {
+           canceledMovementIds.add(move.id);
+           affectedWineIds.add(move.wineId);
+           await api.deleteMovement(move.id);
+        }
+      }
+      
+      // Recalculate CUMP for affected wines
+      const winesToUpdate: Wine[] = [];
+      const allMovementsUpdated = stockMovements.filter(m => !canceledMovementIds.has(m.id));
+
+      for (const wineId of affectedWineIds) {
+        const currentWine = wines.find(w => w.id === wineId);
+        if (!currentWine) continue;
+
+        const wineMovements = allMovementsUpdated
+          .filter(m => m.wineId === wineId)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        let stock = 0;
+        let totalValue = 0;
+
+        for (const m of wineMovements) {
+          if (m.type === 'IN') {
+            const qty = m.quantity;
+            const price = m.price || 0;
+            const shipping = m.shippingCost || 0;
+            stock += qty;
+            totalValue += (qty * price) + shipping;
+          } else if (m.type === 'OUT' || m.type === 'TRANSFER') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock -= m.quantity;
+            totalValue -= (m.quantity * cump);
+          } else if (m.type === 'ADJUST') {
+            const cump = stock > 0 ? totalValue / stock : 0;
+            stock += m.quantity; // m.quantity can be positive or negative
+            totalValue += (m.quantity * cump);
+          }
+          if (stock <= 0) {
+            stock = 0;
+            totalValue = 0;
+          }
+        }
+
+        const newCump = stock > 0 ? totalValue / stock : currentWine.buyingPriceHT;
+        
+        winesToUpdate.push({
+          ...currentWine,
+          stock: Math.max(0, stock),
+          buyingPriceHT: parseFloat(newCump.toFixed(4))
+        });
+      }
+
+      // Update wines in DB
+      for (const w of winesToUpdate) {
+        await api.updateWine(w);
+      }
+
+      // Refresh local state
+      await fetchData();
       return true;
 
     } catch(e: any) {
@@ -592,7 +827,7 @@ export const useAppController = () => {
                     return { ...s, quantity: Math.max(0, s.quantity - soldItem.quantity) };
                     }
                     return s;
-                }).filter(s => s.quantity > 0);
+                });
 
                 await handleClientUpdate({ ...client, externalStock: newExternalStock });
                 
@@ -910,7 +1145,7 @@ export const useAppController = () => {
       handleStockUpdate, handleAddProduct, handleUpdateProduct, handleDeleteProduct, handleToggleArchive,
       handleUpdateDomain, handleAddDomain, handleDeleteDomain,
       handleClientUpdate, handleAddClient, handleDeleteClient, handleStockTransfer, handleCreateInvoice, handleUpdateInvoice, handleRenumberInvoice, handleImportHistoricalInvoice,
-      handleReception, handleUpdatePurchasePayment, handleCancelReception,
+      handleReception, handleUpdatePurchasePayment, handleCancelReception, handleUpdateReceptionAmount, handleUpdateReceptionShippingCost,
       handleInvoiceStatusUpdate, handleDeleteInvoice, handleAddExpense, handleDeleteExpense, handleAddCategory, handleDeleteCategory, setWines, setLogo, setIsSimulation
     }
   };

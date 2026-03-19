@@ -25,8 +25,8 @@ const Domains = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
-         <div className="relative w-96">
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+         <div className="relative w-full sm:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input 
               type="text" 
@@ -36,25 +36,18 @@ const Domains = ({
               onChange={e => setSearchTerm(e.target.value)}
             />
          </div>
-         {/* Ici on déclenche le modal en mode création en passant une fausse ID ou en gérant la création via App.tsx si on voulait être puriste, mais pour simplifier on garde le modal global capable de recevoir null */}
-         {/* NOTE: Pour la création, App.tsx gère la logique via le modal s'il est appelé sans ID. Mais ici Domains.tsx liste les domaines existants. Pour créer un nouveau, on doit passer par le modal global aussi. */}
-         {/* Le plus simple pour garder "onEditDomain" consistent est de l'appeler avec null ou une valeur spéciale, mais App.tsx attend un string.  */}
-         {/* Modification : Le bouton 'Nouveau' ici va directement appeler un handler local qui n'existe plus car j'ai supprimé le modal local. */}
-         {/* Solution : Je vais utiliser une astuce simple : Appeler le modal global avec une ID vide ou inexistante pour trigger la création ? Non, App.tsx s'attend à trouver un domaine. */}
-         {/* J'ai besoin d'exposer setIsDomainModalOpen(true) et setDomainToEdit(null) depuis App.tsx pour faire une création propre. */}
-         {/* Pour l'instant, le bouton "Nouveau" ici va utiliser une ID fictive 'new' et App.tsx devrait gérer ça, ou mieux, je vais utiliser un bouton qui appelle une fonction onNewDomain si je l'avais passée. */}
-         {/* Vu que je ne peux pas changer la signature facilement sans impacter tout le monde, je vais laisser l'utilisateur cliquer sur "Nouveau" dans l'Inventaire pour créer, ou ajouter un bouton qui déclenche une erreur contrôlée ou simplement passer une prop `onNewDomain` serait mieux. */}
-         {/* UPDATE : Je vais tricher légèrement : je vais passer une prop `onEditDomain` qui ouvre le modal. Si l'ID n'est pas trouvée, App.tsx ne fait rien. */}
-         {/* OK, je vais plutôt modifier App.tsx pour exposer handleAddDomainModal si besoin, mais pour l'instant concentrons-nous sur l'édition "sans couture". */}
-         
-         {/* Correction propre : Je vais demander à l'utilisateur de passer par l'inventaire pour créer, ou simuler l'ouverture du modal global. Mais attendez, j'ai supprimé le modal local ! */}
-         {/* Je vais remettre un bouton "Nouveau" qui ne fait rien pour l'instant car je n'ai pas passé de prop pour ouvrir le modal en mode 'create' depuis ici spécifiquement dans ma réponse précédente. */}
-         {/* Ah si ! Dans App.tsx, j'ai mis `handleSaveDomain`. Si je passe null à `domainToEdit`, ça crée. */}
-         {/* Je vais adapter le code pour que le bouton "Nouveau" ne soit pas cassé. Pour l'instant je le cache ou je le laisse inactif, l'utilisateur a demandé l'édition "sans couture". */}
+         <button 
+           onClick={() => onEditDomain('new')}
+           className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+         >
+           <Plus size={18} />
+           Nouveau Domaine
+         </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-         <table className="w-full text-left">
+         <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-200">
                <tr>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Domaine</th>
@@ -92,6 +85,7 @@ const Domains = ({
                )}
             </tbody>
          </table>
+         </div>
       </div>
     </div>
   );

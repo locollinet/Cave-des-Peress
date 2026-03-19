@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
-import { Calendar, Download, Scale, TrendingDown, TrendingUp } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Calendar, Download, Scale, TrendingDown, TrendingUp, CheckCircle, Clock } from 'lucide-react';
 import { Invoice, StockMovement, Expense } from '../types';
 import { formatCurrency } from '../utils';
 
@@ -14,6 +14,22 @@ const VatReport = ({
   expenses: Expense[];
 }) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [vatStatuses, setVatStatuses] = useState<Record<string, 'Pending' | 'Paid'>>(() => {
+    const saved = localStorage.getItem('vatStatuses');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('vatStatuses', JSON.stringify(vatStatuses));
+  }, [vatStatuses]);
+
+  const toggleVatStatus = (monthKey: string) => {
+    setVatStatuses(prev => ({
+      ...prev,
+      [monthKey]: prev[monthKey] === 'Paid' ? 'Pending' : 'Paid'
+    }));
+  };
+
   const months = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
@@ -50,8 +66,8 @@ const VatReport = ({
       if (mv.type === 'IN' && mv.price !== undefined) {
         const d = new Date(mv.date);
         if (d.getFullYear() === selectedYear) {
-          // Estimation TVA 20% sur achat vin
-          const tva = (mv.quantity * mv.price) * 0.20;
+          // Estimation TVA 20% sur achat vin + frais de port
+          const tva = ((mv.quantity * mv.price) + (mv.shippingCost || 0)) * 0.20;
           monthlyData[d.getMonth()].deductibleWine += tva;
         }
       }
@@ -144,8 +160,8 @@ const VatReport = ({
        </div>
 
        {/* TABLEAU MENSUEL */}
-       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full text-left text-sm">
+       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+          <table className="w-full text-left text-sm min-w-[800px]">
              <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold uppercase text-xs">
                 <tr>
                    <th className="px-6 py-4">Période</th>
@@ -168,9 +184,24 @@ const VatReport = ({
                       </td>
                       <td className="px-6 py-4 text-center">
                          {row.balance !== 0 ? (
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${row.balance > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                               {row.balance > 0 ? 'À Payer' : 'Crédit'}
-                            </span>
+                            <button 
+                              onClick={() => toggleVatStatus(`${selectedYear}-${row.monthIndex}`)}
+                              className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold transition-colors w-full ${
+                                vatStatuses[`${selectedYear}-${row.monthIndex}`] === 'Paid' 
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                  : row.balance > 0 
+                                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                              }`}
+                            >
+                               {vatStatuses[`${selectedYear}-${row.monthIndex}`] === 'Paid' ? (
+                                 <><CheckCircle size={14} /> Payé</>
+                               ) : row.balance > 0 ? (
+                                 <><Clock size={14} /> À Payer</>
+                               ) : (
+                                 <><Clock size={14} /> Crédit</>
+                               )}
+                            </button>
                          ) : (
                             <span className="text-gray-300">-</span>
                          )}

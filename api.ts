@@ -83,7 +83,8 @@ const mapMovementFromDB = (m: any): StockMovement => ({
   reference: m.reference,
   paymentStatus: m.payment_status,
   paymentDate: m.payment_date,
-  paymentMethod: m.payment_method
+  paymentMethod: m.payment_method,
+  shippingCost: m.shipping_cost
 });
 
 const mapExpenseFromDB = (e: any): Expense => ({
@@ -360,7 +361,8 @@ export const api = {
       reference: movement.reference,
       payment_status: movement.paymentStatus,
       payment_date: movement.paymentDate,
-      payment_method: movement.paymentMethod
+      payment_method: movement.paymentMethod,
+      shipping_cost: movement.shippingCost
     });
 
     if (error) throw error;
@@ -384,7 +386,8 @@ export const api = {
       reference: m.reference,
       payment_status: m.paymentStatus,
       payment_date: m.paymentDate,
-      payment_method: m.paymentMethod
+      payment_method: m.paymentMethod,
+      shipping_cost: m.shippingCost
     }));
 
     const { error } = await supabase.from('stock_movements').insert(records);
@@ -405,6 +408,19 @@ export const api = {
         .eq('reference', reference)
         .eq('type', 'IN');
      
+     if (error) throw error;
+  },
+
+  // Pour la mise à jour des frais de port d'une facture
+  updateMovementShippingCost: async (id: string, shippingCost: number) => {
+     if (checkSim('updateMovementShippingCost', { id, shippingCost })) return;
+     const { error } = await supabase.from('stock_movements').update({ shipping_cost: shippingCost }).eq('id', id);
+     if (error) throw error;
+  },
+
+  updateMovementPrice: async (id: string, newPrice: number) => {
+     if (checkSim('updateMovementPrice', { id, newPrice })) return;
+     const { error } = await supabase.from('stock_movements').update({ price: newPrice }).eq('id', id);
      if (error) throw error;
   },
 

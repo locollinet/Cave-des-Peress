@@ -277,8 +277,8 @@ const Cart = ({
   const selectedClient = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
-       <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:h-[calc(100vh-100px)]">
+       <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-[60vh] lg:h-auto">
           <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -394,7 +394,7 @@ const Cart = ({
           </div>
        </div>
 
-       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-full">
+       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-[60vh] lg:h-full">
           <div className="flex justify-between items-center mb-6">
              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                <FileText className="text-red-800" /> Panier

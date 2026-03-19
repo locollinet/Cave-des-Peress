@@ -5,6 +5,23 @@ import { Wine, WineColor, Domain, Invoice, Client, CartItem } from './types';
 export const DEFAULT_LOGO_URL = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMTAwIj48ZGVmcz48c3R5bGU+LnJlZHtmaWxsOiM3ZjFkMWQ7fS5ncmVye2ZpbGw6IzMzMzt9LmxpZ2h0e2ZpbGw6Izg4ODt9PC9zdHlsZT48L2RlZnM+PCEtLSBJY29uZSBUaXJlLWJvdWNob24gLS0+PHBhdGggZD0iTTUwIDIwIEw1MCA4MCIgc3Ryb2tlPSIjN2YxZDFkIiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMCA1MCBRMjAgMzUgMzAgNTAgVDUwIDUwIiBmaWxsPSJub25lIiBzdHJva2U9IiM3ZjFkMWQiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PCEtLSBUZXh0ZSAtLT48dGV4dCB4PSI3MCIgeT0iMjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE4IiBjbGFzcz0ibGlnaHQiPkxhPC90ZXh0Pjx0ZXh0IHg9IjcwIiB5PSI1NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjMzIiBjbGFzcz0iZ3JleSI+Y2F2ZTwvdGV4dD48dGV4dCB4PSIxNTUiIHk9IjU1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgY2xhc3M9ImxpZ2h0Ij5kZXM8L3RleHQ+PHRleHQgeD0iNzAiIHk9Ijg1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iMzMiIGNsYXNzPSJyZWQiIGxldHRlci1zcGFjaW5nPSIxIj5QRVJFU1M8L3RleHQ+PC9zdmc+";
 
 /**
+ * Convertit un format de bouteille en équivalent bouteille (75cl) pour la ventilation des frais de port.
+ */
+export const getBottleEquivalent = (format: string): number => {
+  if (!format) return 1;
+  const f = format.toLowerCase();
+  if (f.includes('demi') || f.includes('37.5')) return 0.5;
+  if (f.includes('magnum') || f.includes('1.5')) return 2;
+  if (f.includes('jéroboam') || f.includes('jeroboam') || f.includes('3l') || f.includes('5l')) return 4; // Confirmé par l'utilisateur: Jéroboam = 4
+  if (f.includes('réhoboam') || f.includes('rehoboam') || f.includes('4.5')) return 6;
+  if (f.includes('mathusalem') || f.includes('6l')) return 8;
+  if (f.includes('salmanazar') || f.includes('9l')) return 12;
+  if (f.includes('balthazar') || f.includes('12l')) return 16;
+  if (f.includes('nabuchodonosor') || f.includes('15l')) return 20;
+  return 1; // Défaut: Bouteille 75cl
+};
+
+/**
  * Arrondi sécurisé à 2 décimales pour éviter les erreurs de virgule flottante JS.
  */
 export const roundCurrency = (value: number): number => {
@@ -351,6 +368,8 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
 };
 
 export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: string) => {
+  alert("Pour un export PDF parfait, pensez à DÉCOCHER l'option 'En-têtes et pieds de page' dans les paramètres d'impression de votre navigateur.");
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert("Veuillez autoriser les pop-ups pour imprimer.");
@@ -361,7 +380,7 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
   const winesGroupedByEffectiveRegion: Record<string, Record<string, Wine[]>> = {};
 
   wines.forEach(w => {
-    if (w.isArchived) return;
+    if (w.isArchived || w.stock <= 0) return;
     const domain = domains.find(d => d.id === w.domainId);
     if (!domain) return;
     
@@ -405,18 +424,19 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@400;700&display=swap');
           body { font-family: 'Lato', sans-serif; padding: 0; margin: 0; color: #1a1a1a; background: white; }
-          @page { margin: 1.5cm; }
+          @page { margin: 1.5cm; size: A4; }
           .header { text-align: center; margin-bottom: 40px; border-bottom: 3px double #333; padding-bottom: 20px; }
           .header h1 { font-family: 'Playfair Display', serif; font-size: 36px; margin: 0; font-style: italic; color: #1e293b; }
           .header p { text-transform: uppercase; letter-spacing: 4px; font-size: 12px; color: #64748b; margin-top: 10px; }
+          .header .prix-ht { font-size: 14px; font-weight: bold; color: #7f1d1d; margin-top: 15px; text-transform: none; letter-spacing: normal; }
           .logo-img { display: block; margin: 0 auto 10px auto; max-height: 100px; width: auto; object-fit: contain; }
           .content { column-count: 2; column-gap: 40px; }
-          .region-section { margin-bottom: 30px; break-inside: avoid; page-break-inside: avoid; }
-          .region-title { font-family: 'Playfair Display', serif; font-size: 20px; color: #7f1d1d; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
+          .region-section { margin-bottom: 30px; }
+          .region-title { font-family: 'Playfair Display', serif; font-size: 20px; color: #7f1d1d; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; text-align: center; break-after: avoid; page-break-after: avoid; }
           .domain-block { margin-bottom: 20px; break-inside: avoid; page-break-inside: avoid; }
-          .domain-name { font-weight: bold; font-size: 15px; margin-bottom: 2px; color: #0f172a; }
-          .domain-sub { font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
-          .wine-item { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
+          .domain-name { font-weight: bold; font-size: 15px; margin-bottom: 2px; color: #0f172a; break-after: avoid; page-break-after: avoid; }
+          .domain-sub { font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; break-after: avoid; page-break-after: avoid; }
+          .wine-item { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; font-size: 13px; break-inside: avoid; page-break-inside: avoid; }
           .wine-name { flex: 1; position: relative; overflow: hidden; }
           .wine-name span { background: white; padding-right: 5px; position: relative; z-index: 1; }
           .wine-name::after { content: " . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . "; position: absolute; left: 0; bottom: 3px; z-index: 0; color: #cbd5e1; white-space: nowrap; }
@@ -431,6 +451,7 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
           <img src="${logoUrl}" alt="Logo" class="logo-img" />
           <h1>La Cave des Peress</h1>
           <p>Carte des Vins</p>
+          <div class="prix-ht">Prix HT départ Cave</div>
         </div>
         <div class="content">
           ${sortedRegions.map(region => `
@@ -445,7 +466,7 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
                    ${wines.map(w => {
                      const price = getSellingPrice(w, domain);
                      const formattedPrice = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);
-                     return `<div class="wine-item"><div class="wine-name"><span>${w.name} ${w.format && w.format !== 'Bouteille (75cl)' ? `(${w.format})` : ''}</span></div><div class="wine-meta"><span class="wine-vintage">${w.vintage}</span><span class="wine-price">${formattedPrice}</span></div></div>`;
+                     return `<div class="wine-item"><div class="wine-name"><span>${w.name} <span style="font-size: 10px; color: #64748b; font-style: italic; font-weight: normal;">(${w.color} - ${w.format})</span></span></div><div class="wine-meta"><span class="wine-vintage">${w.vintage}</span><span class="wine-price">${formattedPrice}</span></div></div>`;
                    }).join('')}
                 </div>
               `}).join('')}
@@ -453,7 +474,11 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
           `).join('')}
         </div>
         <div class="footer"><p>3 Rue du monument 21190 Puligny Montrachet - Tél : +33 610847902</p><p>Tous nos prix sont affichés Hors Taxes (HT). L'abus d'alcool est dangereux pour la santé, à consommer avec modération.</p></div>
-        <script>window.onload = function() { window.print(); }</script>
+        <script>
+          window.onload = function() { 
+            setTimeout(function() { window.print(); }, 500);
+          }
+        </script>
       </body>
     </html>
   `;

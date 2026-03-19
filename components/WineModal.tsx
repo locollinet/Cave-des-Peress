@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Wine as WineIcon, X, Save, Copy, Search } from 'lucide-react';
-import { Wine, Domain, WineColor } from '../types';
+import { Wine, Domain, WineColor, Invoice, Client } from '../types';
 import { getColorBadgeClass, getSmartCoefficient } from '../utils';
 
 const BOTTLE_FORMATS = [
@@ -23,10 +23,12 @@ interface WineModalProps {
   initialData?: Partial<Wine>; // Pour la duplication ou pré-remplissage
   wines?: Wine[]; // Liste complète pour la recherche de duplication
   domains: Domain[];
+  invoices?: Invoice[];
+  clients?: Client[];
   onSave: (wine: Wine, domainName?: string, domainCoef?: number, domainRegion?: string) => void;
 }
 
-const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialData, wines, domains, onSave }) => {
+const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialData, wines, domains, invoices, clients, onSave }) => {
   // États du formulaire
   const [name, setName] = useState('');
   const [vintage, setVintage] = useState(new Date().getFullYear().toString());
@@ -96,6 +98,36 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
       }
     }
   }, [domainId, domains]);
+
+  const buyers = React.useMemo(() => {
+    if (!wine || !invoices || !clients) return [];
+    
+    const relevantInvoices = invoices.filter(inv => 
+      inv.type === 'Sale' && 
+      (inv.status === 'Validated' || inv.status === 'Paid') &&
+      inv.items.some(item => item.id === wine.id)
+    );
+    
+    const clientMap = new Map<string, { clientName: string, totalQuantity: number }>();
+    
+    relevantInvoices.forEach(inv => {
+      const items = inv.items.filter(i => i.id === wine.id);
+      const totalQuantityInInvoice = items.reduce((sum, i) => sum + i.quantity, 0);
+      if (totalQuantityInInvoice === 0) return;
+      
+      const clientName = inv.clientName || 'Client Comptoir';
+      const key = inv.clientId || clientName;
+      
+      const existing = clientMap.get(key);
+      if (existing) {
+        existing.totalQuantity += totalQuantityInInvoice;
+      } else {
+        clientMap.set(key, { clientName, totalQuantity: totalQuantityInInvoice });
+      }
+    });
+    
+    return Array.from(clientMap.values()).sort((a, b) => b.totalQuantity - a.totalQuantity);
+  }, [wine, invoices, clients]);
 
   // --- HANDLERS INTELLIGENTS ---
 
@@ -403,6 +435,36 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
                onChange={(e) => setStock(e.target.value)} 
              />
           </div>
+
+          {wine && (
+            <div className="pt-4 border-t border-gray-100">
+               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Historique des ventes</label>
+               {buyers.length > 0 ? (
+                 <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                   <table className="w-full text-sm text-left">
+                     <thead className="bg-gray-100 text-gray-600 text-xs uppercase">
+                       <tr>
+                         <th className="px-3 py-2">Client</th>
+                         <th className="px-3 py-2 text-right">Quantité achetée</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-200">
+                       {buyers.map(({ clientName, totalQuantity }, idx) => (
+                         <tr key={idx} className="hover:bg-white">
+                           <td className="px-3 py-2 font-medium text-gray-800">{clientName}</td>
+                           <td className="px-3 py-2 text-right text-gray-600">{totalQuantity}</td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                 </div>
+               ) : (
+                 <div className="text-sm text-gray-500 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">
+                   Aucune vente enregistrée pour cette référence.
+                 </div>
+               )}
+            </div>
+          )}
 
         </form>
 

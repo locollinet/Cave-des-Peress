@@ -86,22 +86,22 @@ const Dashboard = ({
   const totalExpensesTVA = yearExpenses.reduce((acc, e) => acc + e.amountTVA, 0);
   
 
-  // 5. BILAN TVA (Année en cours - Basé sur Date Facture / Emission)
+  // 5. BILAN TVA (Année en cours - Basé sur les Encaissements pour la collecte)
   const vatStats = useMemo(() => {
-    // Collectée: Factures Validées ou Payées de l'année
+    // Collectée: Factures Payées de l'année (Date de paiement)
     const collected = invoices
-        .filter(i => (i.status === 'Validated' || i.status === 'Paid'))
+        .filter(i => i.status === 'Paid' && i.paymentDate)
         .filter(i => {
-            const dateStr = i.invoiceDate || i.date;
+            const dateStr = i.paymentDate || '';
             const year = parseInt(dateStr.split('/').pop() || '0');
             return year === currentYear;
         })
         .reduce((acc, i) => acc + i.totalTVA, 0);
 
-    // Déductible (Vin): Mouvements d'achat de l'année
+    // Déductible (Vin): Mouvements d'achat de l'année (Date de facture/réception)
     const deductibleWine = movements
         .filter(m => m.type === 'IN' && m.price !== undefined && new Date(m.date).getFullYear() === currentYear)
-        .reduce((acc, m) => acc + (m.quantity * (m.price || 0) * 0.20), 0);
+        .reduce((acc, m) => acc + (((m.quantity * (m.price || 0)) + (m.shippingCost || 0)) * 0.20), 0);
     
     // Déductible (Frais): Dépenses de l'année
     const deductibleExpenses = totalExpensesTVA;
@@ -275,8 +275,8 @@ const Dashboard = ({
             </h3>
             <span className="text-xs text-gray-400">Derniers 10 mouvements</span>
          </div>
-         <div className="max-h-[300px] overflow-y-auto">
-            <table className="w-full text-left text-sm">
+         <div className="max-h-[300px] overflow-auto">
+            <table className="w-full text-left text-sm min-w-[600px]">
                <thead className="bg-gray-50 sticky top-0 z-10 border-b border-gray-100">
                   <tr>
                      <th className="px-6 py-3 font-semibold text-gray-500 text-xs uppercase">Date</th>
