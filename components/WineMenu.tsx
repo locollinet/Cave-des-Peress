@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Printer, Edit2, Check, X, FileSpreadsheet, Eye, EyeOff } from 'lucide-react';
+import { Printer, Edit2, Check, X, FileSpreadsheet, Eye, EyeOff, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Wine, Domain } from '../types';
 import { formatCurrency, getSellingPrice, printWineMenu } from '../utils';
@@ -9,12 +9,16 @@ const WineMenu = ({
   wines, 
   domains, 
   isEmbedded = false,
-  logo
+  logo,
+  onUpdateWine,
+  onEditWine
 }: { 
   wines: Wine[], 
   domains: Domain[],
   isEmbedded?: boolean,
-  logo?: string
+  logo?: string,
+  onUpdateWine: (wine: Wine) => void,
+  onEditWine: (wineId: string | null) => void
 }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [excludedWineIds, setExcludedWineIds] = useState<Set<string>>(new Set());
@@ -36,7 +40,7 @@ const WineMenu = ({
   };
 
   const handleExportExcel = () => {
-    const filteredWines = wines.filter(w => !excludedWineIds.has(w.id) && !w.isArchived && w.stock > 0);
+    const filteredWines = wines.filter(w => !excludedWineIds.has(w.id) && !w.isArchived && (w.stock > 0 || w.isPreSale));
     
     // Create data for Excel
     const data = filteredWines.map(w => {
@@ -89,7 +93,7 @@ const WineMenu = ({
     const winesGroupedByEffectiveRegion: Record<string, Wine[]> = {};
     
     wines.forEach(w => {
-      if (w.isArchived || w.stock <= 0) return;
+      if (w.isArchived || (w.stock <= 0 && !w.isPreSale)) return;
       const domain = domains.find(d => d.id === w.domainId);
       if (!domain) return;
 
@@ -156,6 +160,12 @@ const WineMenu = ({
            </div>
            <div className="flex gap-3 flex-wrap justify-end mt-4 sm:mt-0">
              <button 
+               onClick={() => onEditWine(null)} 
+               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 font-medium"
+             >
+               <Plus size={18} /> Ajouter un vin
+             </button>
+             <button 
                onClick={() => setShowQuantities(!showQuantities)} 
                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-medium ${showQuantities ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700'}`}
              >
@@ -199,16 +209,27 @@ const WineMenu = ({
                                  <li key={w.id} className={`flex justify-between items-end text-sm group ${isExcluded && isEditMode ? 'opacity-40' : ''}`}>
                                     <div className="flex-1 mr-4 overflow-hidden relative flex items-center gap-2">
                                        {isEditMode && (
-                                         <input 
-                                           type="checkbox" 
-                                           checked={!isExcluded}
-                                           onChange={() => toggleWineExclusion(w.id)}
-                                           className="w-4 h-4 text-red-900 rounded border-gray-300 focus:ring-red-900 relative z-20 cursor-pointer"
-                                         />
+                                         <div className="flex items-center gap-2">
+                                           <input 
+                                             type="checkbox" 
+                                             checked={!isExcluded}
+                                             onChange={() => toggleWineExclusion(w.id)}
+                                             className="w-4 h-4 text-red-900 rounded border-gray-300 focus:ring-red-900 cursor-pointer"
+                                             title="Exclure de la carte"
+                                           />
+                                           <input 
+                                             type="checkbox" 
+                                             checked={!!w.isPreSale}
+                                             onChange={() => onUpdateWine({ ...w, isPreSale: !w.isPreSale })}
+                                             className="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-600 cursor-pointer"
+                                             title="Basculer en prévente"
+                                           />
+                                         </div>
                                        )}
                                        <span className="text-slate-700 font-medium relative z-10 bg-[#fdfbf7] pr-2">
                                           {w.name}
                                           <span className="text-slate-400 font-normal italic ml-2 text-[10px]">({w.color} - {w.format})</span>
+                                           {w.isPreSale && <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold uppercase rounded">Prévente</span>}
                                        </span>
                                        <div className="border-b border-dotted border-slate-300 absolute w-full bottom-1 left-0 -z-0"></div>
                                     </div>

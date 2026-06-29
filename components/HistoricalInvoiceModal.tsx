@@ -32,8 +32,11 @@ const HistoricalInvoiceModal: React.FC<HistoricalInvoiceModalProps> = ({ isOpen,
     const totalTTC = Math.round((totalHT + totalTVA) * 100) / 100;
 
     // Formatage dates DD/MM/YYYY
-    const formattedInvDate = new Date(invoiceDate).toLocaleDateString('fr-FR');
-    const formattedPayDate = new Date(paymentDate).toLocaleDateString('fr-FR');
+    const [invY, invM, invD] = invoiceDate.split('-');
+    const formattedInvDate = `${invD}/${invM}/${invY}`;
+    
+    const [payY, payM, payD] = paymentDate.split('-');
+    const formattedPayDate = `${payD}/${payM}/${payY}`;
 
     // Création d'un item fictif pour la structure de données
     const dummyItem: CartItem = {

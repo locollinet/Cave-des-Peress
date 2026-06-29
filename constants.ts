@@ -5,3 +5,11 @@ export const INITIAL_CLIENTS: Client[] = [];
 export const INITIAL_DOMAINS: Domain[] = [];
 export const INITIAL_WINES: Wine[] = [];
 export const INITIAL_INVOICES: Invoice[] = [];
+
+export const ADJUSTMENT_REASONS = [
+  "Erreur de stock / correction",
+  "Casse",
+  "Dégustation",
+  "Offert (hors facture)",
+  "Bouchon"
+];

@@ -1,5 +1,5 @@
 
-import { Wine, WineColor, Domain, Invoice, Client, CartItem } from './types';
+import { Wine, WineColor, Domain, Invoice, Client, CartItem, Asset } from './types';
 
 // Logo La Cave des Peress vectorisé (SVG) - Reproduction fidèle
 export const DEFAULT_LOGO_URL = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMTAwIj48ZGVmcz48c3R5bGU+LnJlZHtmaWxsOiM3ZjFkMWQ7fS5ncmVye2ZpbGw6IzMzMzt9LmxpZ2h0e2ZpbGw6Izg4ODt9PC9zdHlsZT48L2RlZnM+PCEtLSBJY29uZSBUaXJlLWJvdWNob24gLS0+PHBhdGggZD0iTTUwIDIwIEw1MCA4MCIgc3Ryb2tlPSIjN2YxZDFkIiBzdHJva2Utd2lkdGg9IjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMCA1MCBRMjAgMzUgMzAgNTAgVDUwIDUwIiBmaWxsPSJub25lIiBzdHJva2U9IiM3ZjFkMWQiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PCEtLSBUZXh0ZSAtLT48dGV4dCB4PSI3MCIgeT0iMjgiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE4IiBjbGFzcz0ibGlnaHQiPkxhPC90ZXh0Pjx0ZXh0IHg9IjcwIiB5PSI1NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjMzIiBjbGFzcz0iZ3JleSI+Y2F2ZTwvdGV4dD48dGV4dCB4PSIxNTUiIHk9IjU1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgY2xhc3M9ImxpZ2h0Ij5kZXM8L3RleHQ+PHRleHQgeD0iNzAiIHk9Ijg1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iMzMiIGNsYXNzPSJyZWQiIGxldHRlci1zcGFjaW5nPSIxIj5QRVJFU1M8L3RleHQ+PC9zdmc+";
@@ -26,6 +26,21 @@ export const getBottleEquivalent = (format: string): number => {
  */
 export const roundCurrency = (value: number): number => {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+};
+
+/**
+ * Génère un UUID V4 robuste (compatible avec Supabase) avec fallback si crypto.randomUUID n'est pas dispo.
+ */
+export const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback simple compatible UUID V4
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 };
 
 /**
@@ -120,8 +135,111 @@ export const calculateInvoiceTotals = (items: CartItem[], shippingCost: number =
   };
 };
 
+/**
+ * Vérifie si une facture est de type "Purchase" (Rétro-documentation), de manière insensible à la casse.
+ */
+export const isPurchaseInvoice = (invoice: Invoice): boolean => {
+  return invoice.type?.toLowerCase() === 'purchase';
+};
+
+/**
+ * Parse une date de manière robuste, qu'elle soit au format DD/MM/YYYY ou YYYY-MM-DD
+ */
+export const parseSmartDate = (dateStr: string | undefined): Date | null => {
+  if (!dateStr) return null;
+
+  // Si c'est déjà un format ISO YYYY-MM-DD
+  if (dateStr.includes('-')) {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Si c'est au format DD/MM/YYYY
+  if (dateStr.includes('/')) {
+    const [day, month, year] = dateStr.split('/').map(Number);
+    const d = new Date(year, month - 1, day);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+};
+
+/**
+ * Calcule l'échéancier complet d'amortissement d'une immobilisation.
+ * Règle: Arrondi à l'entier, prorata temporis la première année (360j), 
+ * et solde la dernière année pour garantir que Total == Prix d'achat.
+ */
+export const calculateAssetDepreciationSchedule = (asset: { purchaseDate: string, startDepreciationDate?: string, amountHT: number, durationYears: number }) => {
+  const depreciationStartDate = new Date(asset.startDepreciationDate || asset.purchaseDate);
+  const purchaseYear = depreciationStartDate.getFullYear();
+  const duration = asset.durationYears || 1;
+  const totalHT = asset.amountHT;
+  
+  const schedule: { year: number, amount: number }[] = [];
+
+  // Calcul de l'annuité de base (arrondi à l'entier)
+  const annualBase = Math.round(totalHT / duration);
+
+  // Calcul du prorata de la première année (Standard 360 jours)
+  const day = depreciationStartDate.getDate();
+  const month = depreciationStartDate.getMonth(); // 0-11
+  
+  const remainingDaysInMonth = Math.max(0, 30 - day + 1);
+  const remainingFullMonths = 11 - month;
+  const daysFirstYear = (remainingFullMonths * 30) + remainingDaysInMonth;
+  
+  const year1Amount = Math.round(annualBase * (daysFirstYear / 360));
+
+  let cumulative = 0;
+  // On peut aller jusqu'à duration + 1 si achat en cours d'année
+  for (let i = 0; i <= duration; i++) {
+    const currentYear = purchaseYear + i;
+    let currentAmount = 0;
+
+    if (i === 0) {
+      currentAmount = Math.min(year1Amount, totalHT);
+    } else if (cumulative < totalHT) {
+      // Si c'est la "dernière" année théorique ou si le reste est inférieur à une annuité de base
+      if (i === duration || (totalHT - cumulative) < annualBase) {
+        currentAmount = totalHT - cumulative;
+      } else {
+        currentAmount = annualBase;
+      }
+    }
+
+    if (currentAmount > 0) {
+      schedule.push({ year: currentYear, amount: currentAmount });
+      cumulative += currentAmount;
+    }
+    
+    if (cumulative >= totalHT) break;
+  }
+
+  return schedule;
+};
+
+/**
+ * Calcule l'amortissement d'une immobilisation pour une année spécifique.
+ */
+export const calculateAssetDepreciationForYear = (asset: { purchaseDate: string, amountHT: number, durationYears: number }, targetYear: number): number => {
+  const schedule = calculateAssetDepreciationSchedule(asset);
+  const entry = schedule.find(s => s.year === targetYear);
+  return entry ? entry.amount : 0;
+};
+
 export const formatCurrency = (value: number) => 
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+
+/**
+ * Extrait l'année d'une date au format DD/MM/YYYY ou YYYY-MM-DD
+ */
+export const parseYear = (dateStr: string | undefined): number => {
+  if (!dateStr) return 0;
+  if (dateStr.includes('/')) {
+    return parseInt(dateStr.split('/').pop() || '0');
+  }
+  return new Date(dateStr).getFullYear();
+};
 
 export const getColorBadgeClass = (color: WineColor) => {
   switch (color) {
@@ -130,6 +248,7 @@ export const getColorBadgeClass = (color: WineColor) => {
     case WineColor.Rose: return 'bg-pink-100 text-pink-800 border-pink-200';
     case WineColor.Sparkling: return 'bg-slate-100 text-slate-800 border-slate-200';
     case WineColor.Liquor: return 'bg-purple-100 text-purple-800 border-purple-200';
+    case WineColor.Other: return 'bg-gray-100 text-gray-800 border-gray-200';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -149,7 +268,7 @@ export const getSellingPrice = (wine: Wine, domain?: Domain) => {
   return Math.ceil(wine.buyingPriceHT * baseCoef);
 };
 
-export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: string) => {
+export const printInvoice = (invoice: Invoice, clients: Client[], domains: any[], customLogo?: string) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert("Veuillez autoriser les pop-ups pour imprimer.");
@@ -183,17 +302,14 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
         <title>${title} - ${invoice.id}</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@300;400;500;600&display=swap');
-          @page { margin: 0; size: A4; }
+          @page { margin: 1cm; size: A4; }
           body { font-family: 'Montserrat', sans-serif; font-size: 12px; line-height: 1.5; color: #1f2937; background: white; margin: 0; padding: 0; -webkit-print-color-adjust: exact; }
           
-          /* LAYOUT PRINCIPAL FLEXBOX pour éviter les superpositions */
+          /* LAYOUT PRINCIPAL pour éviter les superpositions et les lignes coupées */
           .page-container { 
-              padding: 40px 50px; 
+              padding: 0 10px; 
               max-width: 210mm; 
               margin: 0 auto; 
-              min-height: 297mm; /* Hauteur A4 */
-              display: flex;
-              flex-direction: column;
               box-sizing: border-box;
               position: relative;
           }
@@ -217,8 +333,9 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
           .client-name { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700; color: #111; margin-bottom: 5px; }
           .client-address { font-size: 13px; color: #4b5563; white-space: pre-line; }
           
-          .items-section { flex: 1; /* Pousse le footer vers le bas */ }
+          .items-section { margin-bottom: 40px; }
           .items-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+          .items-table tr { page-break-inside: avoid; break-inside: avoid; }
           .items-table th { text-align: left; padding: 12px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; border-bottom: 2px solid #111; font-weight: 600; }
           .items-table td { padding: 14px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 12px; }
           .items-table tr:last-child td { border-bottom: 1px solid #111; }
@@ -238,6 +355,7 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
               align-items: flex-start; 
               margin-top: 20px;
               break-inside: avoid; /* Évite de couper le bloc */
+              page-break-inside: avoid;
           }
           .bank-details { width: 45%; padding: 15px; background-color: #f9fafb; border-radius: 4px; font-size: 11px; color: #4b5563; }
           .rib-warning { color: #dc2626; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 8px; letter-spacing: 0.5px; }
@@ -251,7 +369,7 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
           
           /* Legal Footer en bas du conteneur Flex */
           .legal-footer { 
-              margin-top: auto; /* Pousse tout en bas */
+              margin-top: 40px; 
               padding-top: 30px; 
               text-align: center; 
               font-size: 9px; 
@@ -309,10 +427,13 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
                 ${invoice.items.map(item => {
                    const lineTotal = roundCurrency(item.sellingPriceHT * item.quantity);
                    const vatRate = item.vatRate !== undefined ? item.vatRate : 20;
+                   const domain = domains.find(d => d.id === item.domainId);
+                   const domainName = domain ? domain.name : '';
                    return `
                   <tr>
                     <td>
                       <span class="item-name">${item.name} ${item.format && item.format !== 'Bouteille (75cl)' ? `(${item.format})` : ''}</span>
+                      ${domainName ? `<div class="item-meta" style="font-size: 0.8em; color: #666;">${domainName}</div>` : ''}
                       ${item.isService ? '' : item.vintage || item.color ? `<div class="item-meta">${item.color || ''} ${item.vintage ? ' • ' + item.vintage : ''}</div>` : ''}
                     </td>
                     <td class="col-tva">${vatRate}%</td>
@@ -352,6 +473,7 @@ export const printInvoice = (invoice: Invoice, clients: Client[], customLogo?: s
                     `).join('')}
                 </table>
               ` : ''}
+              <div style="margin-top: 10px; font-size: 11px; color: #4b5563; font-style: italic;">Livraison en droits acquittés</div>
             </div>
           </div>
 
@@ -423,62 +545,79 @@ export const printWineMenu = (wines: Wine[], domains: Domain[], customLogo?: str
         <title>Carte des Vins - La Cave des Peress</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@400;700&display=swap');
-          body { font-family: 'Lato', sans-serif; padding: 0; margin: 0; color: #1a1a1a; background: white; }
-          @page { margin: 1.5cm; size: A4; }
-          .header { text-align: center; margin-bottom: 40px; border-bottom: 3px double #333; padding-bottom: 20px; }
-          .header h1 { font-family: 'Playfair Display', serif; font-size: 36px; margin: 0; font-style: italic; color: #1e293b; }
-          .header p { text-transform: uppercase; letter-spacing: 4px; font-size: 12px; color: #64748b; margin-top: 10px; }
-          .header .prix-ht { font-size: 14px; font-weight: bold; color: #7f1d1d; margin-top: 15px; text-transform: none; letter-spacing: normal; }
-          .logo-img { display: block; margin: 0 auto 10px auto; max-height: 100px; width: auto; object-fit: contain; }
+          @page { margin: 1cm; size: A4; }
+          body { font-family: 'Lato', sans-serif; padding: 0; margin: 0; color: #1a1a1a; background: white; -webkit-print-color-adjust: exact; }
+          
+          /* Header */
+          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb; }
+          .brand-section { display: flex; flex-direction: column; gap: 10px; width: 50%; }
+          .logo-container { width: 100%; max-width: 200px; height: 80px; display: flex; align-items: center; }
+          .logo-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+          .company-details { font-size: 10px; color: #4b5563; }
+          .doc-info { text-align: right; width: 45%; }
+          .doc-title { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; color: #111; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+          .doc-subtitle { font-size: 14px; color: #6b7280; margin-top: 5px; }
+
+          /* Content */
           .content { column-count: 2; column-gap: 40px; }
-          .region-section { margin-bottom: 30px; }
-          .region-title { font-family: 'Playfair Display', serif; font-size: 20px; color: #7f1d1d; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; text-align: center; break-after: avoid; page-break-after: avoid; }
-          .domain-block { margin-bottom: 20px; break-inside: avoid; page-break-inside: avoid; }
-          .domain-name { font-weight: bold; font-size: 15px; margin-bottom: 2px; color: #0f172a; break-after: avoid; page-break-after: avoid; }
-          .domain-sub { font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; break-after: avoid; page-break-after: avoid; }
-          .wine-item { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; font-size: 13px; break-inside: avoid; page-break-inside: avoid; }
+          .region-section { margin-bottom: 30px; break-inside: avoid; }
+          .region-title { font-family: 'Playfair Display', serif; font-size: 20px; color: #7f1d1d; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
+          .domain-block { margin-bottom: 20px; break-inside: avoid; }
+          .domain-name { font-weight: bold; font-size: 15px; margin-bottom: 2px; color: #0f172a; }
+          .domain-sub { font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
+          .wine-item { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; font-size: 13px; break-inside: avoid; }
           .wine-name { flex: 1; position: relative; overflow: hidden; }
           .wine-name span { background: white; padding-right: 5px; position: relative; z-index: 1; }
           .wine-name::after { content: " . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . "; position: absolute; left: 0; bottom: 3px; z-index: 0; color: #cbd5e1; white-space: nowrap; }
           .wine-meta { display: flex; gap: 10px; background: white; padding-left: 5px; position: relative; z-index: 1; }
           .wine-vintage { font-style: italic; color: #64748b; font-size: 12px; width: 35px; text-align: right; }
           .wine-price { font-weight: bold; width: 55px; text-align: right; }
-          .footer { text-align: center; font-size: 10px; color: #94a3b8; margin-top: 40px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+          
+          /* Footer */
+          .legal-footer { margin-top: 40px; padding-top: 20px; text-align: center; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <img src="${logoUrl}" alt="Logo" class="logo-img" />
-          <h1>La Cave des Peress</h1>
-          <p>Carte des Vins</p>
-          <div class="prix-ht">Prix HT départ Cave</div>
-        </div>
-        <div class="content">
-          ${sortedRegions.map(region => `
-            <div class="region-section">
-              <div class="region-title">${region}</div>
-              ${grouped[region].map(({ domain, wines }) => {
-                 const effectiveSubRegion = wines[0].subRegion;
-                 return `
-                <div class="domain-block">
-                   <div class="domain-name">${domain.name}</div>
-                   ${effectiveSubRegion ? `<div class="domain-sub">${effectiveSubRegion}</div>` : ''}
-                   ${wines.map(w => {
-                     const price = getSellingPrice(w, domain);
-                     const formattedPrice = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);
-                     return `<div class="wine-item"><div class="wine-name"><span>${w.name} <span style="font-size: 10px; color: #64748b; font-style: italic; font-weight: normal;">(${w.color} - ${w.format})</span></span></div><div class="wine-meta"><span class="wine-vintage">${w.vintage}</span><span class="wine-price">${formattedPrice}</span></div></div>`;
-                   }).join('')}
-                </div>
-              `}).join('')}
+        <div class="page-container" style="padding: 0 10px;">
+          <header class="header">
+            <div class="brand-section">
+              <div class="logo-container">
+                 <img src="${logoUrl}" alt="La Cave des Peress" class="logo-img" />
+              </div>
+              <div class="company-details"><strong>La Cave des Peress</strong><br>3 Rue du monument<br>21190 Puligny Montrachet<br>France<br>Tél : +33 6 10 84 79 02</div>
             </div>
-          `).join('')}
+            <div class="doc-info">
+              <h2 class="doc-title">Carte des Vins</h2>
+              <div class="doc-subtitle">Prix HT départ Cave</div>
+            </div>
+          </header>
+
+          <div class="content">
+            ${sortedRegions.map(region => `
+              <div class="region-section">
+                <div class="region-title">${region}</div>
+                ${grouped[region].map(({ domain, wines }) => {
+                   const effectiveSubRegion = wines[0].subRegion;
+                   return `
+                  <div class="domain-block">
+                     <div class="domain-name">${domain.name}</div>
+                     ${effectiveSubRegion ? `<div class="domain-sub">${effectiveSubRegion}</div>` : ''}
+                     ${wines.map(w => {
+                       const price = getSellingPrice(w, domain);
+                       const formattedPrice = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);
+                       return `<div class="wine-item"><div class="wine-name"><span>${w.name} <span style="font-size: 10px; color: #64748b; font-style: italic; font-weight: normal;">(${w.color} - ${w.format})</span></span></div><div class="wine-meta"><span class="wine-vintage">${w.vintage}</span><span class="wine-price">${formattedPrice}</span></div></div>`;
+                     }).join('')}
+                  </div>
+                `}).join('')}
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="legal-footer">
+             La Cave des Peress — EURL au capital de 5 000 € — 3 Rue du monument 21190 Puligny Montrachet<br>SIREN 751 886 649 — RCS Dijon — TVA Intracommunautaire : FR 37 751886649<br>L'abus d'alcool est dangereux pour la santé, à consommer avec modération.
+          </div>
         </div>
-        <div class="footer"><p>3 Rue du monument 21190 Puligny Montrachet - Tél : +33 610847902</p><p>Tous nos prix sont affichés Hors Taxes (HT). L'abus d'alcool est dangereux pour la santé, à consommer avec modération.</p></div>
-        <script>
-          window.onload = function() { 
-            setTimeout(function() { window.print(); }, 500);
-          }
-        </script>
+        <script>window.onload = function() { setTimeout(function() { window.print(); }, 500); }</script>
       </body>
     </html>
   `;

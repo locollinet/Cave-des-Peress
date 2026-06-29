@@ -1,16 +1,18 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Printer, FileBadge, Ban, Euro, Undo2, Trash2, Download, FileSpreadsheet, Calendar, Scale, User, Pencil, Save, X, Check, Truck, FileClock, Eye, Calculator } from 'lucide-react';
+import { Search, Printer, FileBadge, Ban, Euro, Undo2, Trash2, Download, FileSpreadsheet, Calendar, Scale, User, Pencil, Save, X, Check, Truck, FileClock, Eye, Calculator, Plus, TrendingUp, TrendingDown, Landmark, Info } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Invoice, Client, Wine, StockMovement, ExpenseCategory, CartItem } from '../types';
-import { formatCurrency, printInvoice, calculateInvoiceTotals } from '../utils'; // Import updated utils
+import { Invoice, Client, Wine, StockMovement, ExpenseCategory, CartItem, WineColor } from '../types';
+import { formatCurrency, printInvoice, calculateInvoiceTotals, getSellingPrice, parseYear } from '../utils'; // Import updated utils
 import PaymentModal from './PaymentModal';
+import { DrmTable } from './drm/DrmTable';
 import HistoricalInvoiceModal from './HistoricalInvoiceModal';
 
-const Accounting = ({ 
+  const Accounting = ({ 
   invoices, 
   clients,
   wines,
+  domains,
   stockMovements,
   onUpdateStatus,
   onUpdateInvoice,
@@ -18,11 +20,14 @@ const Accounting = ({
   onDeleteInvoice,
   logo,
   onEditClient,
-  onImportHistoricalInvoice // New Prop
+  onEditWine,
+  onImportHistoricalInvoice,
+  defaultTab = 'proforma'
 }: { 
   invoices: Invoice[], 
   clients: Client[],
   wines: Wine[],
+  domains: any[],
   stockMovements: StockMovement[],
   onUpdateStatus: (id: string, status: Invoice['status'], paymentDetails?: { date: string, method: string, reference?: string }) => void,
   onUpdateInvoice: (invoice: Invoice) => Promise<boolean>,
@@ -30,9 +35,11 @@ const Accounting = ({
   onDeleteInvoice: (id: string) => void,
   logo: string,
   onEditClient: (id: string | null) => void,
-  onImportHistoricalInvoice: (invoice: Invoice) => Promise<boolean>
+  onEditWine: (id: string | null) => void,
+  onImportHistoricalInvoice: (invoice: Invoice) => Promise<boolean>,
+  defaultTab?: 'proforma' | 'invoice' | 'cancelled' | 'drm'
 }) => {
-  const [tab, setTab] = useState<'proforma' | 'invoice' | 'cancelled' | 'drm'>('proforma');
+  const [tab, setTab] = useState<'proforma' | 'invoice' | 'cancelled' | 'drm' | 'margin'>(defaultTab as any);
   const [searchTerm, setSearchTerm] = useState('');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -43,7 +50,21 @@ const Accounting = ({
   // State pour le rapport DRM
   const [drmMonth, setDrmMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
-  // State pour l'édition de facture
+  // 1. CALCUL MARGE COMMERCIALE (Prix Vente HT - Coût Achat HT)
+  const marginData = useMemo(() => {
+    return invoices.filter(i => i.status === 'Paid' || i.status === 'Validated').reduce((acc, inv) => {
+      const invMargin = inv.items.reduce((itemAcc, item) => {
+        const wine = wines.find(w => w.id === item.id);
+        const cost = (item as any).purchasePriceHT || wine?.buyingPriceHT || 0;
+        return itemAcc + ((item.sellingPriceHT - cost) * item.quantity);
+      }, 0);
+      return acc + invMargin;
+    }, 0);
+  }, [invoices, wines]);
+  
+  const totalCA = useMemo(() => {
+    return invoices.filter(i => i.status === 'Paid' || i.status === 'Validated').reduce((acc, inv) => acc + inv.totalHT, 0);
+  }, [invoices]);
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
@@ -55,45 +76,61 @@ const Accounting = ({
   const [tempId, setTempId] = useState('');
 
   // --- LOGIC DRM ---
-  const drmData = useMemo<Record<string, { in: number, out: number }>>(() => {
-     const [year, month] = drmMonth.split('-').map(Number);
-     // Filter movements for the selected month
-     const relevantMovements = stockMovements.filter(m => {
-        const d = new Date(m.date);
-        return d.getMonth() + 1 === month && d.getFullYear() === year;
-     });
+  const drmData = useMemo<Record<string, { in: number, out: number, adjust: number }>>(() => {
+    const [year, month] = drmMonth.split('-').map(Number);
+    const report: Record<string, { in: number, out: number, adjust: number }> = {};
+    
+    // Initialize permitted colors (exclude WineColor.Other)
+    Object.values(WineColor).forEach(c => {
+      if (c !== WineColor.Other) report[c] = { in: 0, out: 0, adjust: 0 };
+    });
 
-     // Group by Color -> Type (IN/OUT)
-     const report: Record<string, { in: number, out: number }> = {};
-     
-     // Initialize basic colors
-     ['Rouge', 'Blanc', 'Rosé', 'Effervescent', 'Spiritueux'].forEach(c => {
-        report[c] = { in: 0, out: 0 };
-     });
-
-     relevantMovements.forEach(m => {
-        const wine = wines.find(w => w.id === m.wineId);
-        if (wine) {
-           const color = wine.color;
-           if (!report[color]) report[color] = { in: 0, out: 0 };
-           
-           if (m.type === 'IN') {
-              report[color].in += m.quantity;
-           } else if (m.type === 'OUT') {
-              report[color].out += m.quantity;
-           }
-           if (m.type === 'ADJUST') {
-              if (m.quantity > 0) report[color].in += m.quantity;
-              else report[color].out += Math.abs(m.quantity);
-           }
+    // 1. Invoices (Purchases + Sales)
+    invoices.forEach(inv => {
+      if ((inv.status === 'Validated' || inv.status === 'Paid')) {
+        const d = new Date(inv.invoiceDate || inv.date);
+        if (d.getMonth() + 1 === month && d.getFullYear() === year) {
+          inv.items.forEach(item => {
+            const wine = wines.find(w => w.id === item.id);
+            if (wine && wine.color !== WineColor.Other) {
+              const color = wine.color;
+              if (!report[color]) report[color] = { in: 0, out: 0, adjust: 0 };
+              
+              if (inv.type === 'Purchase') report[color].in += item.quantity;
+              if (inv.type === 'Sale') report[color].out += item.quantity;
+            }
+          });
         }
-     });
+      }
+    });
 
-     return report;
-  }, [drmMonth, stockMovements, wines]);
+    // 2. Adjustments (stockMovements)
+    stockMovements.forEach(m => {
+       if (m.type === 'ADJUST') {
+          const d = new Date(m.date);
+          if (d.getMonth() + 1 === month && d.getFullYear() === year) {
+             const wine = wines.find(w => w.id === m.wineId);
+             if (wine && wine.color !== WineColor.Other) {
+                const color = wine.color;
+                if (!report[color]) report[color] = { in: 0, out: 0, adjust: 0 };
+                
+                // --- LOG AUDIT SPIRITUEUX ---
+                if (color === WineColor.Liquor) {
+                    console.log(`[AUDIT SPIRITUEUX] Ajustement du ${d.toLocaleDateString()}: ${wine.name} | Qty: ${m.quantity}`);
+                }
+                
+                report[color].adjust += m.quantity;
+             }
+          }
+       }
+    });
+
+    return report;
+  }, [drmMonth, invoices, stockMovements, wines]);
 
   const filtered = useMemo(() => {
     let list = invoices.filter(inv => {
+      if (inv.type !== 'Sale') return false;
       let statusMatch = false;
       if (tab === 'invoice') statusMatch = (inv.status === 'Validated' || inv.status === 'Paid');
       else if (tab === 'proforma') statusMatch = inv.status === 'ProForma';
@@ -141,7 +178,18 @@ const Accounting = ({
 
   const handleEditSave = async () => {
       if (invoiceToEdit) {
-          const success = await onUpdateInvoice(invoiceToEdit);
+          const cleanedInvoice = {
+              ...invoiceToEdit,
+              items: invoiceToEdit.items.map(item => ({
+                  ...item,
+                  quantity: item.quantity === '' ? 0 : Number(item.quantity) || 0,
+                  sellingPriceHT: item.sellingPriceHT === '' ? 0 : Number(item.sellingPriceHT) || 0,
+                  vatRate: item.vatRate === '' ? 20 : Number(item.vatRate) || 0
+              })),
+              shippingCost: invoiceToEdit.shippingCost === '' ? 0 : Number(invoiceToEdit.shippingCost) || 0
+          };
+
+          const success = await onUpdateInvoice(cleanedInvoice);
           if (success) {
               setIsEditModalOpen(false);
               setInvoiceToEdit(null);
@@ -170,9 +218,9 @@ const Accounting = ({
       
       let parsedValue: string | number = value;
       if (field === 'quantity') {
-          parsedValue = parseInt(value) || 0;
+          parsedValue = value === '' ? ('' as any as number) : parseInt(value);
       } else if (field === 'sellingPriceHT' || field === 'vatRate') {
-          parsedValue = parseFloat(value) || 0;
+          parsedValue = value === '' ? ('' as any as number) : parseFloat(value);
       }
 
       setInvoiceToEdit(prev => {
@@ -184,9 +232,81 @@ const Accounting = ({
       });
   };
 
+  const removeEditItem = (itemId: string) => {
+      if (!invoiceToEdit) return;
+      setInvoiceToEdit(prev => {
+          if (!prev) return null;
+          return {
+              ...prev,
+              items: prev.items.filter(i => i.id !== itemId)
+          };
+      });
+  };
+
+  const addEditItem = () => {
+      if (!invoiceToEdit) return;
+      setInvoiceToEdit(prev => {
+          if (!prev) return null;
+          const newItem = {
+              id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              name: 'Nouvelle ligne',
+              quantity: 1,
+              sellingPriceHT: 0,
+              vatRate: 20,
+              isService: true
+          };
+          return {
+              ...prev,
+              items: [...prev.items, newItem as any]
+          };
+      });
+  };
+
+  const addWineItem = (wineId: string) => {
+      if (!invoiceToEdit) return;
+      const wine = wines.find(w => w.id === wineId);
+      if (!wine) return;
+      
+      const domain = domains.find(d => d.id === wine.domainId);
+      const sellingPriceHT = getSellingPrice(wine, domain);
+
+      setInvoiceToEdit(prev => {
+          if (!prev) return null;
+          
+          const existingItemIndex = prev.items.findIndex(i => i.id === wine.id && !i.fromExternalStock && !i.isService);
+          
+          if (existingItemIndex >= 0) {
+              const newItems = [...prev.items];
+              newItems[existingItemIndex] = {
+                  ...newItems[existingItemIndex],
+                  quantity: newItems[existingItemIndex].quantity + 1
+              };
+              return { ...prev, items: newItems };
+          }
+          
+          const newItem = {
+              id: wine.id,
+              wineId: wine.id, // Keep a reference to the actual wine
+              name: wine.name,
+              domainId: wine.domainId,
+              vintage: wine.vintage,
+              color: wine.color,
+              quantity: 1,
+              sellingPriceHT: sellingPriceHT,
+              vatRate: 20,
+              isService: false,
+              fromExternalStock: false
+          };
+          return {
+              ...prev,
+              items: [...prev.items, newItem as any]
+          };
+      });
+  };
+
   const updateShippingCost = (value: string) => {
       if (!invoiceToEdit) return;
-      const cost = parseFloat(value) || 0;
+      const cost = value === '' ? ('' as any as number) : parseFloat(value);
       setInvoiceToEdit(prev => {
           if (!prev) return null;
           return { ...prev, shippingCost: cost };
@@ -257,7 +377,7 @@ const Accounting = ({
       {/* MODAL INSPECTION (VIEW ONLY) */}
       {invoiceToView && viewTotals && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                     <div>
                         <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -321,9 +441,19 @@ const Accounting = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {invoiceToView.items.map((item, idx) => (
+                                    {invoiceToView.items.map((item, idx) => {
+                                        const domain = domains.find(d => d.id === item.domainId);
+                                        return (
                                         <tr key={idx} className="hover:bg-gray-50">
-                                            <td className="py-2 pl-2 text-gray-800">{item.name}</td>
+                                            <td className="py-2 pl-2 text-gray-800">
+                                                <div 
+                                                    className="font-medium cursor-pointer hover:text-blue-600 hover:underline"
+                                                    onClick={() => onEditWine(item.id)}
+                                                >
+                                                    {item.name}
+                                                </div>
+                                                {domain && <div className="text-xs text-gray-500">{domain.name}</div>}
+                                            </td>
                                             <td className="py-2 text-center">
                                                 <span className={`px-2 py-0.5 rounded text-[10px] border ${
                                                     (item.vatRate || 20) === 20 ? 'bg-gray-100 border-gray-200' : 'bg-orange-100 border-orange-200 text-orange-800'
@@ -335,8 +465,8 @@ const Accounting = ({
                                             <td className="py-2 text-right text-gray-500">{formatCurrency(item.sellingPriceHT)}</td>
                                             <td className="py-2 text-right pr-2 font-medium">{formatCurrency(item.sellingPriceHT * item.quantity)}</td>
                                         </tr>
-                                    ))}
-                                    {invoiceToView.shippingCost && invoiceToView.shippingCost > 0 && (
+                                    )})}
+                                    {invoiceToView.shippingCost !== undefined && invoiceToView.shippingCost > 0 && (
                                         <tr className="bg-gray-50 italic">
                                             <td className="py-2 pl-2">Frais de Port</td>
                                             <td className="py-2 text-center text-xs">20%</td>
@@ -410,7 +540,7 @@ const Accounting = ({
                 
                 <div className="flex-1 overflow-y-auto p-6">
                     {/* Header Fields Edit */}
-                    <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="grid grid-cols-3 gap-6 mb-6">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Client</label>
                             <input 
@@ -418,6 +548,32 @@ const Accounting = ({
                                 className="w-full border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={invoiceToEdit.clientName}
                                 onChange={(e) => setInvoiceToEdit({...invoiceToEdit, clientName: e.target.value})}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
+                            <input 
+                                type="date" 
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none h-[42px]"
+                                value={(() => {
+                                    const d = invoiceToEdit.invoiceDate || invoiceToEdit.date;
+                                    if (!d) return '';
+                                    const parts = d.split('/');
+                                    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                    return d;
+                                })()}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (!val) return;
+                                    const parts = val.split('-');
+                                    const newDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : val;
+                                    
+                                    if (invoiceToEdit.status === 'ProForma') {
+                                        setInvoiceToEdit({...invoiceToEdit, date: newDate});
+                                    } else {
+                                        setInvoiceToEdit({...invoiceToEdit, invoiceDate: newDate});
+                                    }
+                                }}
                             />
                         </div>
                         <div>
@@ -439,7 +595,7 @@ const Accounting = ({
                                 type="number"
                                 step="0.01"
                                 className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800"
-                                value={invoiceToEdit.shippingCost || 0}
+                                value={Number.isNaN(invoiceToEdit.shippingCost) ? '' : (invoiceToEdit.shippingCost || 0)}
                                 onChange={(e) => updateShippingCost(e.target.value)}
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">€</span>
@@ -455,10 +611,13 @@ const Accounting = ({
                                     <th className="px-4 py-2 w-20 text-center">Qté</th>
                                     <th className="px-4 py-2 w-28 text-right">Prix Unit. HT</th>
                                     <th className="px-4 py-2 w-28 text-right">Total HT</th>
+                                    <th className="px-4 py-2 w-10"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {invoiceToEdit.items.map(item => (
+                                {invoiceToEdit.items.map(item => {
+                                    const domain = domains.find(d => d.id === item.domainId);
+                                    return (
                                     <tr key={item.id} className="hover:bg-gray-50">
                                         <td className="px-4 py-3">
                                             <input 
@@ -467,6 +626,7 @@ const Accounting = ({
                                                 value={item.name}
                                                 onChange={(e) => updateEditItem(item.id, 'name', e.target.value)}
                                             />
+                                            {domain && <div className="text-xs text-gray-500 mt-1">{domain.name}</div>}
                                             <div className="text-xs text-gray-500 mt-1">{item.vintage} {item.color ? `• ${item.color}` : ''}</div>
                                             {item.isService && <div className="text-[10px] bg-indigo-100 text-indigo-700 px-1 rounded inline-block mt-1">Prestation</div>}
                                         </td>
@@ -486,7 +646,7 @@ const Accounting = ({
                                             <input 
                                                 type="number" 
                                                 className="w-16 text-center border border-gray-300 rounded py-1 px-2 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                                value={item.quantity}
+                                                value={Number.isNaN(item.quantity) ? '' : item.quantity}
                                                 onChange={(e) => updateEditItem(item.id, 'quantity', e.target.value)}
                                             />
                                         </td>
@@ -496,7 +656,7 @@ const Accounting = ({
                                                     type="number" 
                                                     step="0.01"
                                                     className="w-24 text-right border border-gray-300 rounded py-1 px-2 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                                    value={item.sellingPriceHT}
+                                                    value={Number.isNaN(item.sellingPriceHT) ? '' : item.sellingPriceHT}
                                                     onChange={(e) => updateEditItem(item.id, 'sellingPriceHT', e.target.value)}
                                                 />
                                                 <span className="text-gray-500">€</span>
@@ -505,21 +665,57 @@ const Accounting = ({
                                         <td className="px-4 py-3 text-right font-bold text-gray-900">
                                             {formatCurrency(item.sellingPriceHT * item.quantity)}
                                         </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <button 
+                                                onClick={() => removeEditItem(item.id)}
+                                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                                title="Supprimer la ligne"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </td>
                                     </tr>
-                                ))}
+                                )})}
                             </tbody>
                             <tfoot>
                                 <tr className="border-t border-gray-200">
-                                    <td colSpan={4} className="px-4 py-3 text-right text-gray-600">Sous-total HT</td>
+                                    <td colSpan={4} className="px-4 py-3 text-left">
+                                        <div className="flex items-center gap-4">
+                                            <button 
+                                                onClick={addEditItem}
+                                                className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1"
+                                            >
+                                                <Plus size={16} /> Ajouter une prestation
+                                            </button>
+                                            <div className="h-4 w-px bg-gray-300"></div>
+                                            <select 
+                                                className="text-sm border border-gray-300 rounded py-1 px-2 outline-none focus:ring-2 focus:ring-blue-500 max-w-[300px]"
+                                                onChange={(e) => {
+                                                    if (e.target.value) {
+                                                        addWineItem(e.target.value);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">+ Ajouter un vin...</option>
+                                                {[...wines].sort((a, b) => a.name.localeCompare(b.name)).map(w => (
+                                                    <option key={w.id} value={w.id}>{w.name} ({w.vintage})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(editTotals.ht)}</td>
+                                    <td className="px-4 py-3"></td>
                                 </tr>
                                 <tr>
                                     <td colSpan={4} className="px-4 py-2 text-right text-gray-600">Total TVA</td>
                                     <td className="px-4 py-2 text-right font-medium">{formatCurrency(editTotals.tva)}</td>
+                                    <td className="px-4 py-2"></td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                     <td colSpan={4} className="px-4 py-3 text-right font-bold text-gray-900">Total TTC</td>
                                     <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">{formatCurrency(editTotals.ttc)}</td>
+                                    <td className="px-4 py-3"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -610,46 +806,14 @@ const Accounting = ({
                  />
               </div>
               <p className="text-xs text-blue-700 mb-4">
-                 Ce tableau récapitule les mouvements de stock physiques (Entrées / Sorties) pour la période sélectionnée.
+                 Ce tableau récapitule les mouvements de stock physiques (Entrées / Sorties / Ajustements) pour la période sélectionnée.
                  <br/><strong>Note :</strong> Les quantités sont exprimées en <em>nombre de cols (bouteilles)</em>.
               </p>
-              
-              <div className="overflow-x-auto rounded-lg border border-blue-200 bg-white shadow-sm">
-                 <table className="w-full text-sm text-left min-w-[500px]">
-                    <thead className="bg-blue-100 text-blue-900 font-semibold uppercase text-xs">
-                       <tr>
-                          <th className="px-6 py-3">Catégorie / Couleur</th>
-                          <th className="px-6 py-3 text-center text-green-700 bg-green-50/50">Entrées (Achats)</th>
-                          <th className="px-6 py-3 text-center text-red-700 bg-red-50/50">Sorties (Ventes)</th>
-                          <th className="px-6 py-3 text-center bg-gray-50">Balance Période</th>
-                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                       {Object.entries(drmData).map(([color, stats]: [string, { in: number, out: number }]) => (
-                          <tr key={color} className="hover:bg-gray-50 transition-colors">
-                             <td className="px-6 py-4 font-medium text-gray-700">{color}</td>
-                             <td className="px-6 py-4 text-center font-mono text-green-600 font-bold bg-green-50/10">+{stats.in}</td>
-                             <td className="px-6 py-4 text-center font-mono text-red-600 font-bold bg-red-50/10">-{stats.out}</td>
-                             <td className="px-6 py-4 text-center font-bold text-gray-800 bg-gray-50/30">
-                                {stats.in - stats.out > 0 ? '+' : ''}{stats.in - stats.out}
-                             </td>
-                          </tr>
-                       ))}
-                       <tr className="bg-gray-50 font-bold border-t border-gray-200">
-                          <td className="px-6 py-4 text-gray-900 uppercase">TOTAL GÉNÉRAL</td>
-                          <td className="px-6 py-4 text-center text-green-700 bg-green-100/20">
-                             +{Object.values(drmData).reduce((acc: number, v: { in: number, out: number }) => acc + v.in, 0)}
-                          </td>
-                          <td className="px-6 py-4 text-center text-red-700 bg-red-100/20">
-                             -{Object.values(drmData).reduce((acc: number, v: { in: number, out: number }) => acc + v.out, 0)}
-                          </td>
-                          <td className="px-6 py-4 text-center text-gray-900 bg-gray-100">
-                             {Object.values(drmData).reduce((acc: number, v: { in: number, out: number }) => acc + (v.in - v.out), 0)}
-                          </td>
-                       </tr>
-                    </tbody>
-                 </table>
+              <div className="mb-4 flex items-center gap-2 text-[10px] text-blue-600 bg-blue-100/50 p-2 rounded border border-blue-200">
+                 <Info size={14} />
+                 <span>Les transferts en <strong>stock déporté</strong> (chez les clients) ne sont pas comptabilisés ici. Seules les ventes facturées impactent la colonne Sorties.</span>
               </div>
+              <DrmTable drmData={drmData} />
            </div>
         </div>
       ) : (
@@ -731,7 +895,7 @@ const Accounting = ({
                             </button>
 
                             <button 
-                              onClick={() => printInvoice(inv, clients, logo)}
+                              onClick={() => printInvoice(inv, clients, domains, logo)}
                               className="p-1.5 hover:bg-gray-100 rounded text-gray-600" 
                               title="Imprimer"
                             >

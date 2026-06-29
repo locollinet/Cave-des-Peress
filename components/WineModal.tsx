@@ -38,6 +38,7 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
   const [coef, setCoef] = useState('');
   const [stock, setStock] = useState('0');
   const [format, setFormat] = useState('Bouteille (75cl)');
+  const [isPreSale, setIsPreSale] = useState(false);
   const [region, setRegion] = useState('');
   const [subRegion, setSubRegion] = useState('');
   const [domainId, setDomainId] = useState('');
@@ -58,11 +59,12 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
       setName(source.name || '');
       setVintage(source.vintage || new Date().getFullYear().toString());
       setColor(source.color || WineColor.Red);
-      setPrice(source.buyingPriceHT ? source.buyingPriceHT.toString() : '');
-      setSellingPrice(source.sellingPriceHT ? source.sellingPriceHT.toString() : '');
-      setCoef(source.coefficient ? source.coefficient.toString() : '');
+      setPrice(source.buyingPriceHT !== undefined && source.buyingPriceHT !== null ? source.buyingPriceHT.toString() : '');
+      setSellingPrice(source.sellingPriceHT !== undefined && source.sellingPriceHT !== null ? source.sellingPriceHT.toString() : '');
+      setCoef(source.coefficient !== undefined && source.coefficient !== null ? source.coefficient.toString() : '');
       setStock(source.stock !== undefined ? source.stock.toString() : '0');
       setFormat(source.format || 'Bouteille (75cl)');
+      setIsPreSale(source.isPreSale || false);
       setRegion(source.region || '');
       setSubRegion(source.subRegion || '');
       setDomainId(source.domainId || (domains.length > 0 ? domains[0].id : 'new'));
@@ -184,13 +186,25 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price) {
-       alert("Nom et Prix d'achat obligatoires");
+    
+    // Nettoyage des entrées numériques (virgule -> point)
+    const cleanPrice = price.toString().replace(',', '.');
+    const cleanSellingPrice = sellingPrice.toString().replace(',', '.');
+    const cleanCoef = coef.toString().replace(',', '.');
+
+    if (!name || cleanPrice === '') {
+       alert("Le nom et le prix d'achat sont obligatoires (utilisez 0€ si besoin)");
        return;
     }
 
     if (domainId === 'new' && !newDomainName) {
        alert("Nom du nouveau domaine obligatoire");
+       return;
+    }
+
+    const parsedPrice = parseFloat(cleanPrice);
+    if (isNaN(parsedPrice)) {
+       alert("Le prix d'achat n'est pas un nombre valide");
        return;
     }
 
@@ -200,10 +214,11 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
       name,
       vintage,
       color,
-      buyingPriceHT: parseFloat(price),
-      sellingPriceHT: sellingPrice ? parseFloat(sellingPrice) : undefined,
-      coefficient: coef ? parseFloat(coef) : undefined,
-      stock: parseInt(stock) || 0,
+      buyingPriceHT: parsedPrice,
+      sellingPriceHT: cleanSellingPrice ? parseFloat(cleanSellingPrice) : undefined,
+      coefficient: cleanCoef ? parseFloat(cleanCoef) : undefined,
+      stock: isPreSale ? 0 : (parseInt(stock) || 0),
+      isPreSale,
       region: region || undefined,
       subRegion: subRegion || undefined,
       format,
@@ -390,21 +405,27 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
 
           <div className="grid grid-cols-3 gap-5 pt-2 border-t border-gray-100">
              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Prix Achat HT</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 flex justify-between items-center">
+                   Prix Achat HT
+                </label>
                 <div className="relative">
                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">€</span>
                    <input 
-                     type="number" step="0.01" required 
+                     type="text"
                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-medium" 
                      value={price} 
+                     placeholder="0.00"
                      onChange={(e) => handlePriceChange(e.target.value)} 
                    />
                 </div>
+                <p className="mt-1 text-[9px] text-gray-400 italic">
+                   Note : Ce prix est normalement calculé via le PMP.
+                </p>
              </div>
              <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Coef.</label>
                 <input 
-                  type="number" step="0.1" 
+                  type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center" 
                   value={coef} 
                   onChange={(e) => handleCoefChange(e.target.value)} 
@@ -416,7 +437,7 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
                 <div className="relative">
                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">€</span>
                    <input 
-                     type="number" step="0.01" 
+                     type="text"
                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-bold text-emerald-700" 
                      value={sellingPrice} 
                      onChange={(e) => setSellingPrice(e.target.value)} 
@@ -427,9 +448,22 @@ const WineModal: React.FC<WineModalProps> = ({ isOpen, onClose, wine, initialDat
           </div>
 
           <div>
+             <div className="flex items-center gap-2 mb-2">
+                <input 
+                  type="checkbox" 
+                  id="isPreSale"
+                  checked={isPreSale}
+                  onChange={(e) => setIsPreSale(e.target.checked)}
+                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                />
+                <label htmlFor="isPreSale" className="text-sm font-medium text-gray-700">
+                  Vin en prévente
+                </label>
+             </div>
              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Stock Initial / Actuel</label>
              <input 
                type="number" 
+               disabled={isPreSale}
                className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" 
                value={stock} 
                onChange={(e) => setStock(e.target.value)} 

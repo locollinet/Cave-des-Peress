@@ -19,7 +19,8 @@ const PaymentModal = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onConfirm(new Date(date).toLocaleDateString('fr-FR'), method, reference);
+    const [year, month, day] = date.split('-');
+    onConfirm(`${day}/${month}/${year}`, method, reference);
     setReference('');
     setMethod('Virement');
   };
@@ -45,6 +46,11 @@ const PaymentModal = ({
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
+            {new Date(date).getFullYear() < new Date().getFullYear() && (
+              <p className="text-xs text-amber-600 mt-1 italic">
+                Note : Cette date impactera la trésorerie de l'année {new Date(date).getFullYear()}.
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">

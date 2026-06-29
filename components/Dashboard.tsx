@@ -2,7 +2,8 @@
 import React, { useMemo, useState } from 'react';
 import { Package, TrendingUp, Euro, AlertCircle, Wallet, CreditCard, TrendingDown, Scale, History } from 'lucide-react';
 import { Wine, Invoice, StockMovement, Client, Expense, Domain } from '../types';
-import { formatCurrency, getSellingPrice } from '../utils';
+import { formatCurrency, getSellingPrice, parseYear } from '../utils';
+import { calculateVatReport } from '../src/services/vatService';
 
 const Dashboard = ({ 
   wines, 
@@ -19,6 +20,9 @@ const Dashboard = ({
   clients: Client[],
   expenses: Expense[]
 }) => {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState<number | 'all'>(currentYear);
+  const isGlobal = selectedYear === 'all';
   const activeWines = wines.filter(w => !w.isArchived);
   
   // 1. STOCK VALORISATION (Identique)
@@ -48,77 +52,154 @@ const Dashboard = ({
   const potentialMargin = totalPotentialRevenue - totalStockValue;
 
 
-  // 2. CA TTC (Ventes)
-  // "En Caisse" = Status Paid
-  const paidInvoices = invoices.filter(i => i.type === 'Sale' && i.status === 'Paid');
-  const revenuePaidTTC = paidInvoices.reduce((acc, i) => acc + i.totalTTC, 0);
-  const revenuePaidHT = paidInvoices.reduce((acc, i) => acc + i.totalHT, 0);
+  // 2. CA ÉVOLUTIONS (Facturé vs Encaissé)
+  // Filtre pour les factures de vente (Facturé = status Validated/Paid)
+  const salesInvoices = invoices.filter(i => 
+    i.type === 'Sale' && 
+    (i.status === 'Paid' || i.status === 'Validated') &&
+    (selectedYear === 'all' || parseYear(i.invoiceDate || i.date) === selectedYear)
+  );
+
+  // CA Facturé hors prestation
+  const revenueFactureHT = salesInvoices.reduce((acc, inv) => {
+     const invTotal = inv.items.filter(item => !item.isService).reduce((itemAcc, item) => itemAcc + (item.sellingPriceHT * item.quantity), 0);
+     return acc + invTotal;
+  }, 0);
+
+  // Marge Commerciale (CA Facturé - Coût Achat des bouteilles vendues) - HORS PRESTATION
+  const commercialMarginHT = salesInvoices.reduce((acc, inv) => {
+    const invoiceMargin = inv.items.filter(item => !item.isService).reduce((itemAcc, item) => {
+       const wine = wines.find(w => w.id === item.id);
+       const cost = (item as any).purchasePriceHT || wine?.buyingPriceHT || 0;
+       return itemAcc + ((item.sellingPriceHT - cost) * item.quantity);
+    }, 0);
+    return acc + invoiceMargin;
+  }, 0);
+
+  const marginPercentage = revenueFactureHT > 0 ? (commercialMarginHT / revenueFactureHT) * 100 : 0;
   
-  // "À Encaisser" = Status Validated
-  const pendingInvoices = invoices.filter(i => i.type === 'Sale' && i.status === 'Validated');
+  // "En Caisse" = Status Paid, basé sur la date de PAIEMENT
+  const paidInvoices = invoices.filter(i => 
+    i.type === 'Sale' && 
+    i.status === 'Paid' && 
+    i.paymentDate && 
+    (selectedYear === 'all' || parseYear(i.paymentDate) === selectedYear)
+  );
+  const revenuePaidTTC = paidInvoices.reduce((acc, i) => acc + i.totalTTC, 0);
+
+  // "À Encaisser" = Status Validated, basé sur la date de FACTURE
+  const pendingInvoices = invoices.filter(i => 
+    i.type === 'Sale' && 
+    i.status === 'Validated' &&
+    (selectedYear === 'all' || parseYear(i.invoiceDate || i.date) === selectedYear)
+  );
   const revenuePendingTTC = pendingInvoices.reduce((acc, i) => acc + i.totalTTC, 0);
 
 
   // 3. ACHATS VINS TTC (Dépenses Stock)
   const purchaseGroups = useMemo(() => {
-     const groups: Record<string, { totalTTC: number, status: string }> = {};
-     movements.filter(m => m.type === 'IN' && m.price !== undefined).forEach(m => {
-        const key = `${m.date}_${m.provider}_${m.reference}`;
-        if (!groups[key]) {
-           groups[key] = { totalTTC: 0, status: m.paymentStatus || 'Pending' };
-        }
-        const lineTotalHT = m.quantity * (m.price || 0);
-        groups[key].totalTTC += lineTotalHT * 1.20; 
-        if (m.paymentStatus === 'Paid') groups[key].status = 'Paid';
-     });
+     const groups: Record<string, { totalHT: number, totalTVA: number, totalTTC: number, status: string, date: string, paymentDate?: string }> = {};
+     invoices
+      .filter(i => i.type?.toLowerCase() === 'purchase')
+      .forEach(i => {
+         const key = `${i.id}`;
+         
+         if (!groups[key]) {
+            groups[key] = { 
+                totalHT: i.totalHT || 0, 
+                totalTVA: i.totalTVA || 0, 
+                totalTTC: i.totalTTC || 0, 
+                status: i.status === 'Paid' ? 'Paid' : 'Pending', 
+                date: i.date, 
+                paymentDate: i.paymentDate 
+            };
+         }
+      });
      return Object.values(groups);
-  }, [movements]);
+  }, [invoices]);
 
-  const purchasePaidTTC = purchaseGroups.filter(g => g.status === 'Paid').reduce((acc, g) => acc + g.totalTTC, 0);
-  const purchasePendingTTC = purchaseGroups.filter(g => g.status !== 'Paid').reduce((acc, g) => acc + g.totalTTC, 0);
-  const purchasePaidHT = purchasePaidTTC / 1.20;
+  const purchasePaidTTC = purchaseGroups
+    .filter(g => g.status === 'Paid' && g.paymentDate && (selectedYear === 'all' || parseYear(g.paymentDate) === selectedYear))
+    .reduce((acc, g) => acc + g.totalTTC, 0);
+
+  const purchasePendingTTC = purchaseGroups
+    .filter(g => g.status !== 'Paid' && (selectedYear === 'all' || parseYear(g.date) === selectedYear))
+    .reduce((acc, g) => acc + g.totalTTC, 0);
+
+  const purchaseTotalTVA = purchaseGroups
+    .filter(g => selectedYear === 'all' || parseYear(g.date) === selectedYear)
+    .reduce((acc, g) => acc + g.totalTVA, 0);
+
+  const purchasePaidTVA = purchaseGroups
+    .filter(g => g.status === 'Paid' && g.paymentDate && (selectedYear === 'all' || parseYear(g.paymentDate) === selectedYear))
+    .reduce((acc, g) => acc + g.totalTVA, 0);
+
+  const purchasePaidHT = purchaseGroups
+    .filter(g => g.status === 'Paid' && g.paymentDate && (selectedYear === 'all' || parseYear(g.paymentDate) === selectedYear))
+    .reduce((acc, g) => acc + g.totalHT, 0);
 
 
-  // 4. FRAIS GÉNÉRAUX TTC (Année en cours)
-  const currentYear = new Date().getFullYear();
-  const yearExpenses = expenses.filter(e => new Date(e.date).getFullYear() === currentYear);
-  const totalExpensesTTC = yearExpenses.reduce((acc, e) => acc + e.amountTTC, 0);
-  const totalExpensesTVA = yearExpenses.reduce((acc, e) => acc + e.amountTVA, 0);
+  // 4. FRAIS GÉNÉRAUX TTC
+  const filteredExpenses = expenses.filter(e => isGlobal || parseYear(e.date) === currentYear);
+  const totalExpensesTTC = filteredExpenses.reduce((acc, e) => acc + e.amountTTC, 0);
+  const totalExpensesTVA = filteredExpenses.reduce((acc, e) => acc + e.amountTVA, 0);
   
-
-  // 5. BILAN TVA (Année en cours - Basé sur les Encaissements pour la collecte)
+  // 5. BILAN TVA (Basé sur les Encaissements pour la collecte)
   const vatStats = useMemo(() => {
-    // Collectée: Factures Payées de l'année (Date de paiement)
-    const collected = invoices
-        .filter(i => i.status === 'Paid' && i.paymentDate)
-        .filter(i => {
-            const dateStr = i.paymentDate || '';
-            const year = parseInt(dateStr.split('/').pop() || '0');
-            return year === currentYear;
-        })
-        .reduce((acc, i) => acc + i.totalTVA, 0);
+    if (isGlobal) {
+        // Pour la vue globale, on somme sur plusieurs années (simplification)
+        // Note: calculateVatReport prend une année spécifique.
+        // Pour une vue globale, on pourrait itérer sur les années ou gérer différemment.
+        // Ici on garde l'ancienne logique pour `isGlobal` pour ne pas tout casser.
+        const collected = invoices
+            .filter(i => i.status === 'Paid' && i.paymentDate)
+            .reduce((acc, i) => acc + i.totalTVA, 0);
 
-    // Déductible (Vin): Mouvements d'achat de l'année (Date de facture/réception)
-    const deductibleWine = movements
-        .filter(m => m.type === 'IN' && m.price !== undefined && new Date(m.date).getFullYear() === currentYear)
-        .reduce((acc, m) => acc + (((m.quantity * (m.price || 0)) + (m.shippingCost || 0)) * 0.20), 0);
-    
-    // Déductible (Frais): Dépenses de l'année
-    const deductibleExpenses = totalExpensesTVA;
+        const deductibleExpenses = expenses.reduce((acc, e) => acc + e.amountTVA, 0);
 
-    return {
-        collected,
-        deductible: deductibleWine + deductibleExpenses,
-        balance: collected - (deductibleWine + deductibleExpenses)
-    };
-  }, [invoices, movements, totalExpensesTVA, currentYear]);
+        return {
+            collected,
+            deductible: deductibleExpenses,
+            balance: collected - deductibleExpenses
+        };
+    } else {
+        const report = calculateVatReport(invoices, expenses, currentYear);
+        const totals = report.reduce((acc, curr) => ({
+            collected: acc.collected + curr.collected,
+            deductible: acc.deductible + curr.deductiblePurchases + curr.deductibleExpenses,
+            balance: acc.balance + curr.balance
+        }), { collected: 0, deductible: 0, balance: 0 });
+        
+        return totals;
+    }
+  }, [invoices, expenses, currentYear, isGlobal]);
 
-
+  // 6. TRÉSORERIE NETTE
+  // Formule demandée : Trésorerie = CA TTC Total - Achats Vins TTC Total - Frais Généraux TTC - Solde TVA
+  const tresorerieNette = (revenuePaidTTC + revenuePendingTTC) - (purchasePaidTTC + purchasePendingTTC) - totalExpensesTTC - vatStats.balance;
+  
   return (
     <div className="space-y-6">
       
+      {/* HEADER AVEC TOGGLE GLOBAL */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Tableau de Bord</h2>
+          <select 
+            className="text-sm text-gray-500 bg-transparent border-none p-0 focus:ring-0"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          >
+            <option value="all">Vue globale (toute période)</option>
+            {Array.from({length: 5}, (_, i) => currentYear - i).map(year => (
+              <option key={year} value={year}>Vue annuelle ({year})</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      
       {/* LIGNE 1 : SYNTHÈSE TRÉSORERIE & RÉSULTAT */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         
         {/* BLOC 1 : CA TTC */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-emerald-100 relative overflow-hidden flex flex-col justify-between h-40">
@@ -126,7 +207,7 @@ const Dashboard = ({
               <TrendingUp size={60} className="text-emerald-600" />
            </div>
            <div>
-              <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">Chiffre d'Affaires TTC</p>
+              <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">Encaissements TTC</p>
               <div className="space-y-1">
                  <div className="flex justify-between items-end">
                     <span className="text-sm text-gray-500">En Caisse (Payé)</span>
@@ -158,6 +239,10 @@ const Dashboard = ({
                  </div>
               </div>
            </div>
+           <div className="mt-2 pt-2 border-t border-blue-50 text-xs text-blue-700 flex justify-between">
+              <span>Dont TVA :</span>
+              <span className="font-bold">{formatCurrency(purchaseTotalTVA)}</span>
+           </div>
         </div>
 
         {/* BLOC 3 : FRAIS GÉNÉRAUX */}
@@ -166,10 +251,10 @@ const Dashboard = ({
               <TrendingDown size={60} className="text-orange-600" />
            </div>
            <div>
-              <p className="text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Frais Généraux ({currentYear})</p>
+              <p className="text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Frais Généraux {isGlobal ? '(Global)' : `(${currentYear})`}</p>
               <div className="flex flex-col gap-1">
                   <span className="text-xl font-bold text-orange-600">{formatCurrency(totalExpensesTTC)}</span>
-                  <span className="text-xs text-gray-500">Total TTC Cumulé</span>
+                  <span className="text-xs text-gray-500">Total TTC {isGlobal ? 'Historique' : 'Annuel'}</span>
               </div>
            </div>
            <div className="mt-2 pt-2 border-t border-orange-50 text-xs text-orange-700 flex justify-between">
@@ -184,7 +269,7 @@ const Dashboard = ({
               <Scale size={60} className="text-indigo-600" />
            </div>
            <div>
-              <p className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2">Bilan TVA {currentYear}</p>
+              <p className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2">Bilan TVA {isGlobal ? '(Global)' : currentYear}</p>
               <div className="flex flex-col gap-1">
                  <div className="flex justify-between text-xs">
                     <span className="text-green-600">+ Collectée</span>
@@ -197,10 +282,28 @@ const Dashboard = ({
               </div>
            </div>
            <div className="mt-2 pt-2 border-t border-indigo-50 flex justify-between items-center">
-              <span className="text-xs font-bold text-indigo-900">Solde {currentYear} :</span>
+              <span className="text-xs font-bold text-indigo-900">Solde {isGlobal ? 'Total' : currentYear} :</span>
               <span className={`text-lg font-bold ${vatStats.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                  {formatCurrency(vatStats.balance)}
               </span>
+           </div>
+        </div>
+
+        {/* BLOC 5 : TRÉSORERIE NETTE */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-teal-100 relative overflow-hidden flex flex-col justify-between h-40">
+           <div className="absolute right-0 top-0 p-4 opacity-10">
+              <Wallet size={60} className="text-teal-600" />
+           </div>
+           <div>
+              <p className="text-xs font-bold text-teal-800 uppercase tracking-wider mb-2">Trésorerie Nette</p>
+              <div className="flex flex-col gap-1">
+                  <span className={`text-2xl font-bold ${tresorerieNette >= 0 ? 'text-teal-600' : 'text-red-600'}`}>
+                     {formatCurrency(tresorerieNette)}
+                  </span>
+              </div>
+           </div>
+           <div className="mt-2 pt-2 border-t border-teal-50 text-[10px] text-gray-500 flex justify-between">
+              <span>CA TTC - Frais TTC - Achats TTC - Solde TVA</span>
            </div>
         </div>
       </div>
@@ -211,25 +314,28 @@ const Dashboard = ({
          {/* MARGE NETTE APPROXIMATIVE */}
          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-               <Euro size={20} className="text-gray-600" /> Rentabilité Commerciale (HT)
+               <Euro size={20} className="text-gray-600" /> Marge Commerciale (HT)
             </h3>
             <div className="space-y-4">
                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                  <span className="text-sm font-medium text-green-800">CA HT (Encaissé)</span>
-                  <span className="font-bold text-green-700">{formatCurrency(revenuePaidHT)}</span>
+                  <span className="text-sm font-medium text-green-800">CA Facturé HT</span>
+                  <span className="font-bold text-green-700">{formatCurrency(revenueFactureHT)}</span>
                </div>
                <div className="flex justify-between items-center px-3 text-sm text-gray-500">
-                  <span>- Coût Achat Vins (Vendus*)</span>
-                   <span className="text-red-500">- {formatCurrency(purchasePaidHT)}</span>
+                  <span>- Coût d'Achat (Total HT)</span>
+                   <span className="text-red-500">- {formatCurrency(revenueFactureHT - commercialMarginHT)}</span>
                </div>
                <div className="border-t border-gray-200 my-2"></div>
                <div className="flex justify-between items-center">
-                  <span className="font-bold text-gray-900">Marge Brute (Cashflow)</span>
-                  <span className={`text-xl font-bold ${revenuePaidHT - purchasePaidHT >= 0 ? 'text-indigo-600' : 'text-red-600'}`}>
-                     {formatCurrency(revenuePaidHT - purchasePaidHT)}
+                  <div>
+                    <span className="font-bold text-gray-900 block">Marge Commerciale</span>
+                    <span className="text-xs text-gray-500">Soit {marginPercentage.toFixed(1)}% du CA</span>
+                  </div>
+                  <span className={`text-xl font-bold ${commercialMarginHT >= 0 ? 'text-indigo-600' : 'text-red-600'}`}>
+                     {formatCurrency(commercialMarginHT)}
                   </span>
                </div>
-               <p className="text-xs text-gray-400 italic">* Calcul basé sur les flux de trésorerie réels (Encaissements - Décaissements Stock).</p>
+               <p className="text-xs text-gray-400 italic">Basé sur le CA facturé et les coûts d'achat historiques.</p>
             </div>
          </div>
 
@@ -264,10 +370,9 @@ const Dashboard = ({
               </div>
            </div>
          </div>
+       </div>
 
-      </div>
-
-      {/* RECENT MOVEMENTS */}
+       {/* RECENT MOVEMENTS */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
          <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">

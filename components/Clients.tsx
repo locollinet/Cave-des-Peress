@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User, Phone, Mail, MapPin, Package, ArrowLeft, FileText, Search, Plus, Save, X, Smartphone, Trash2, Printer, History, Euro, ExternalLink } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Package, ArrowLeft, FileText, Search, Plus, Save, X, Smartphone, Trash2, Printer, History, Euro, ExternalLink, Edit } from 'lucide-react';
 import { Client, Wine, Domain, CartItem, Invoice } from '../types';
 import { formatCurrency, getSellingPrice, getColorBadgeClass, printInvoice } from '../utils';
 
@@ -15,6 +15,7 @@ const Clients = ({
   onDeleteClient,
   onCreateInvoice,
   onStockTransfer,
+  onBulkStockTransfer,
   onEditDomain,
   onEditWine,
   onEditClient // Injection du handler global
@@ -29,10 +30,12 @@ const Clients = ({
   onDeleteClient: (clientId: string) => void,
   onCreateInvoice: (clientName: string, items: CartItem[], type: 'ProForma' | 'Invoice', clientId?: string) => void,
   onStockTransfer: (clientId: string, wineId: string, quantity: number, direction: 'deposit' | 'return') => void,
+  onBulkStockTransfer: (clientId: string, transfers: { wineId: string, quantity: number }[], direction: 'deposit' | 'return') => void,
   onEditDomain: (id: string) => void,
   onEditWine: (id: string) => void,
   onEditClient: (id: string | null) => void
 }) => {
+  console.log("DEBUG: Clients component props.clients:", clients);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showStockModal, setShowStockModal] = useState(false);
@@ -47,6 +50,7 @@ const Clients = ({
   const [transferWineId, setTransferWineId] = useState('');
   const [transferQty, setTransferQty] = useState(1);
   const [transferSearch, setTransferSearch] = useState('');
+  const [selectedConsignedWines, setSelectedConsignedWines] = useState<Set<string>>(new Set());
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => 
@@ -98,12 +102,14 @@ const Clients = ({
     const initialQty: Record<string, number> = {};
     const initialPrices: Record<string, number> = {};
     
-    selectedClient.externalStock.forEach(item => {
+    (selectedClient?.externalStock || []).forEach(item => {
+        if (selectedConsignedWines.size > 0 && !selectedConsignedWines.has(item.wineId)) return;
+        
         initialQty[item.wineId] = 0; // Default to 0 to force user input (relevé de conso)
         const wine = wines.find(w => w.id === item.wineId);
         const domain = wine ? domains.find(d => d.id === wine.domainId) : undefined;
         if (wine) {
-            initialPrices[item.wineId] = getSellingPrice(wine, domain);
+            initialPrices[item.wineId] = item.sellingPriceHT || getSellingPrice(wine, domain);
         }
     });
     setBillingQuantities(initialQty);
@@ -113,7 +119,7 @@ const Clients = ({
 
   const handleBillingQtyChange = (wineId: string, val: number) => {
       if (!selectedClient) return;
-      const stockItem = selectedClient.externalStock.find(s => s.wineId === wineId);
+      const stockItem = selectedClient?.externalStock?.find(s => s.wineId === wineId);
       if (!stockItem) return;
       const safeVal = Math.min(stockItem.quantity, Math.max(0, val));
       setBillingQuantities(prev => ({ ...prev, [wineId]: safeVal }));
@@ -129,7 +135,8 @@ const Clients = ({
   const setAllToMax = () => {
       if (!selectedClient) return;
       const maxQty: Record<string, number> = {};
-      selectedClient.externalStock.forEach(item => {
+      (selectedClient?.externalStock || []).forEach(item => {
+          if (selectedConsignedWines.size > 0 && !selectedConsignedWines.has(item.wineId)) return;
           maxQty[item.wineId] = item.quantity;
       });
       setBillingQuantities(maxQty);
@@ -202,7 +209,7 @@ const Clients = ({
         <div className="flex-1 overflow-y-auto">
           {filteredClients.map(client => {
             // Calculer la valorisation totale du stock déporté en PRIX D'ACHAT HT
-            const stockValue = client.externalStock.reduce((acc, item) => {
+            const stockValue = (client.externalStock || []).reduce((acc, item) => {
                 const wine = wines.find(w => w.id === item.wineId);
                 if (!wine) return acc;
                 // Valeur Stock = Prix Achat HT * Quantité
@@ -217,10 +224,10 @@ const Clients = ({
             >
               <div className="font-semibold text-gray-900">{client.name}</div>
               {client.contactName && <div className="text-sm text-gray-500">{client.contactName}</div>}
-              {client.externalStock.length > 0 && (
+              {client.externalStock && (client.externalStock || []).length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
-                    <Package size={12} /> {client.externalStock.reduce((acc, s) => acc + s.quantity, 0)} btl
+                    <Package size={12} /> {(client.externalStock || []).reduce((acc, s) => acc + s.quantity, 0)} btl
                   </div>
                   {stockValue > 0 && (
                     <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium" title="Valeur Stock (Achat HT)">
@@ -340,12 +347,34 @@ const Clients = ({
                   Stock en Consignation
                 </h3>
                 <div className="flex gap-2">
-                  <button 
+                  {selectedConsignedWines.size > 0 && (
+                    <button 
+                      onClick={() => {
+                        if (window.confirm(`Êtes-vous sûr de vouloir supprimer les ${selectedConsignedWines.size} lignes sélectionnées et restituer le stock à la cave principale ?`)) {
+                          const transfers: { wineId: string, quantity: number }[] = [];
+                          selectedConsignedWines.forEach(wineId => {
+                            const stockItem = selectedClient.externalStock.find(s => s.wineId === wineId);
+                            if (stockItem) {
+                              transfers.push({ wineId: stockItem.wineId, quantity: stockItem.quantity });
+                            }
+                          });
+                          if (transfers.length > 0) {
+                             onBulkStockTransfer(selectedClient.id, transfers, 'return');
+                          }
+                          setSelectedConsignedWines(new Set());
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium flex items-center gap-2"
+                    >
+                      <Trash2 size={16} /> Supprimer Sélection
+                    </button>
+                  )}
+                    <button 
                     onClick={openGlobalBilling}
-                    disabled={selectedClient.externalStock.length === 0}
+                    disabled={(selectedClient?.externalStock || []).length === 0}
                     className="px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <FileText size={16} /> Facturer Consommations
+                    <FileText size={16} /> {selectedConsignedWines.size > 0 ? 'Facturer Sélection' : 'Facturer Consommations'}
                   </button>
                   <button 
                     onClick={() => setShowStockModal(true)}
@@ -356,7 +385,7 @@ const Clients = ({
                 </div>
               </div>
 
-              {selectedClient.externalStock.length === 0 ? (
+              {(selectedClient?.externalStock || []).length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-500">
                   Aucun stock en dépôt chez ce client.
                 </div>
@@ -368,12 +397,29 @@ const Clients = ({
                       <th className="py-2 pl-2">Vin</th>
                       <th className="py-2 text-center">En Stock</th>
                       <th className="py-2 text-center">Vendu</th>
+                      <th className="py-2 text-center">Prix Unitaire</th>
                       <th className="py-2 text-right">Valeur Vente HT</th>
-                      <th className="py-2 text-right pr-2">Actions</th>
+                      <th className="py-2 text-right pr-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <span>Actions</span>
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 cursor-pointer"
+                            checked={selectedClient.externalStock.length > 0 && selectedConsignedWines.size === selectedClient.externalStock.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedConsignedWines(new Set((selectedClient.externalStock || []).map(s => s.wineId)));
+                              } else {
+                                setSelectedConsignedWines(new Set());
+                              }
+                            }}
+                          />
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {[...selectedClient.externalStock]
+                    {(selectedClient.externalStock || [])
                       .sort((a, b) => {
                          const wineA = wines.find(w => w.id === a.wineId);
                          const wineB = wines.find(w => w.id === b.wineId);
@@ -385,16 +431,16 @@ const Clients = ({
                       const domain = wine ? domains.find(d => d.id === wine.domainId) : null;
                       if (!wine) return null;
                       
-                      const unitPrice = getSellingPrice(wine, domain);
+                      const unitPrice = stockItem.sellingPriceHT || getSellingPrice(wine, domain);
                       
                       const soldQuantity = invoices
-                        .filter(inv => inv.clientId === selectedClient.id && inv.type === 'FACTURE')
+                        .filter(inv => inv.clientId === selectedClient.id && inv.type === 'Sale')
                         .flatMap(inv => inv.items)
                         .filter(item => item.id === stockItem.wineId && item.fromExternalStock)
                         .reduce((acc, item) => acc + item.quantity, 0);
                       
                       return (
-                        <tr key={stockItem.wineId} className="hover:bg-gray-50">
+                        <tr key={stockItem.wineId} className={`hover:bg-gray-50 ${selectedConsignedWines.has(stockItem.wineId) ? 'bg-blue-50/50' : ''}`}>
                           <td className="py-3 pl-2">
                             <div 
                                className="font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
@@ -432,11 +478,56 @@ const Clients = ({
                           <td className="py-3 text-center text-gray-600 font-medium">
                             {soldQuantity}
                           </td>
+                          <td className="py-3 text-center">
+                             <div className="flex items-center justify-center gap-1 group/price">
+                                <span className={stockItem.sellingPriceHT ? "text-blue-600 font-bold" : "text-gray-600"}>
+                                    {formatCurrency(unitPrice)}
+                                </span>
+                                <button 
+                                  onClick={() => {
+                                      const p = prompt(`Prix de vente HT spécifique pour ${wine.name} ?`, unitPrice.toString());
+                                      if (p !== null) {
+                                          const val = parseFloat(p.replace(',', '.'));
+                                          if (!isNaN(val)) {
+                                              const updated = {
+                                                  ...selectedClient,
+                                                  externalStock: (selectedClient.externalStock || []).map(s => 
+                                                      s.wineId === stockItem.wineId ? { ...s, sellingPriceHT: val } : s
+                                                  )
+                                              };
+                                              onUpdateClient(updated);
+                                          }
+                                      }
+                                  }}
+                                  className="p-1 text-gray-400 opacity-0 group-hover/price:opacity-100 hover:text-blue-600"
+                                  title="Modifier le prix de vente pour ce client"
+                                >
+                                    <Edit size={12} />
+                                </button>
+                                {stockItem.sellingPriceHT !== undefined && (
+                                    <button 
+                                      onClick={() => {
+                                          const updated = {
+                                              ...selectedClient,
+                                              externalStock: selectedClient.externalStock.map(s => 
+                                                  s.wineId === stockItem.wineId ? { ...s, sellingPriceHT: undefined } : s
+                                              )
+                                          };
+                                          onUpdateClient(updated);
+                                      }}
+                                      className="p-1 text-gray-300 opacity-0 group-hover/price:opacity-100 hover:text-red-500"
+                                      title="Réinitialiser au prix standard"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                )}
+                             </div>
+                          </td>
                           <td className="py-3 text-right text-gray-600">
                             {formatCurrency(unitPrice * stockItem.quantity)}
                           </td>
                           <td className="py-3 text-right pr-2">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-2 items-center">
                               <button 
                                 onClick={() => handleReturnStock(stockItem.wineId, stockItem.quantity)}
                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" 
@@ -447,16 +538,29 @@ const Clients = ({
                               </button>
                               <button 
                                 onClick={() => {
-                                  if (window.confirm("Êtes-vous sûr de vouloir supprimer cette ligne de stock déporté ?")) {
-                                    const newExternalStock = selectedClient.externalStock.filter(s => s.wineId !== stockItem.wineId);
-                                    onUpdateClient({ ...selectedClient, externalStock: newExternalStock });
+                                  if (window.confirm("Êtes-vous sûr de vouloir supprimer cette ligne et restituer le stock à la cave principale ?")) {
+                                    onStockTransfer(selectedClient.id, stockItem.wineId, stockItem.quantity, 'return');
                                   }
                                 }}
                                 className="p-1.5 text-red-600 hover:bg-red-50 rounded" 
-                                title="Supprimer la ligne"
+                                title="Supprimer et restituer le stock"
                               >
                                 <Trash2 size={16} />
                               </button>
+                              <input 
+                                type="checkbox" 
+                                className="w-4 h-4 ml-2 cursor-pointer"
+                                checked={selectedConsignedWines.has(stockItem.wineId)}
+                                onChange={(e) => {
+                                  const newSet = new Set(selectedConsignedWines);
+                                  if (e.target.checked) {
+                                    newSet.add(stockItem.wineId);
+                                  } else {
+                                    newSet.delete(stockItem.wineId);
+                                  }
+                                  setSelectedConsignedWines(newSet);
+                                }}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -507,7 +611,7 @@ const Clients = ({
                                    </td>
                                    <td className="px-4 py-3 text-right">
                                       <button 
-                                         onClick={() => printInvoice(inv, clients, logo)}
+                                         onClick={() => printInvoice(inv, clients, domains, logo)}
                                          className="p-1.5 hover:bg-gray-100 rounded text-gray-600" 
                                          title="Imprimer"
                                       >
@@ -635,7 +739,8 @@ const Clients = ({
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                     {[...selectedClient.externalStock]
+                     {(selectedClient.externalStock || [])
+                        .filter(item => selectedConsignedWines.size === 0 || selectedConsignedWines.has(item.wineId))
                         .sort((a, b) => {
                            const wineA = wines.find(w => w.id === a.wineId);
                            const wineB = wines.find(w => w.id === b.wineId);

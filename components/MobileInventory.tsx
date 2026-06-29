@@ -7,7 +7,7 @@ import { getColorBadgeClass } from '../utils';
 interface StockRowProps {
   wine: Wine;
   domain?: Domain;
-  onStockUpdate: (id: string, newStock: number) => void;
+  onOpenAdjustmentModal: (wine: Wine) => void;
   onEditDomain: (id: string) => void;
   onEditWine: (id: string) => void;
 }
@@ -15,96 +15,49 @@ interface StockRowProps {
 const StockRow: React.FC<StockRowProps> = ({ 
   wine, 
   domain, 
-  onStockUpdate,
+  onOpenAdjustmentModal,
   onEditDomain,
   onEditWine
 }) => {
-  // Local state for immediate UI response
-  const [localStock, setLocalStock] = useState(wine.stock);
-  const [isPending, setIsPending] = useState(false);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Sync local stock if external changes happen (e.g. initial load or other user update)
-  useEffect(() => {
-    setLocalStock(wine.stock);
-  }, [wine.stock]);
-
-  const vibrate = () => {
-    if (navigator.vibrate) {
-      navigator.vibrate(10);
-    }
-  };
-
-  const handleUpdate = (delta: number) => {
-    vibrate();
-    const newStock = Math.max(0, localStock + delta);
-    
-    // Immediate UI Update
-    setLocalStock(newStock);
-    setIsPending(true);
-
-    // Clear previous timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Set new timer (Debounce 600ms)
-    debounceTimerRef.current = setTimeout(() => {
-      onStockUpdate(wine.id, newStock);
-      setIsPending(false);
-    }, 600);
-  };
-
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transform transition-all duration-200">
         <div className="p-4 border-b border-gray-100 flex justify-between items-start gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${getColorBadgeClass(wine.color)}`}>
-                    {wine.color}
-                  </span>
-                  <span className="text-gray-400 text-xs font-bold">{wine.vintage}</span>
-                  {isPending && <span className="text-[10px] text-orange-500 font-medium animate-pulse">Enregistrement...</span>}
-              </div>
-              <h3 
-                className="font-bold text-gray-900 text-base truncate leading-tight uppercase tracking-wide cursor-pointer active:text-blue-600 active:underline"
-                onClick={() => domain && onEditDomain(domain.id)}
-              >
-                {domain?.name}
-              </h3>
-              <p 
-                className="text-gray-600 text-sm leading-tight mt-1 line-clamp-2 cursor-pointer active:text-blue-600 active:underline"
-                onClick={() => onEditWine(wine.id)}
-              >
-                  {wine.name} {wine.subRegion ? `(${wine.subRegion})` : ''}
-              </p>
-              {wine.format && wine.format !== 'Bouteille (75cl)' && (
-                  <span className="inline-block mt-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] rounded border border-indigo-100 font-bold uppercase">
-                    {wine.format}
-                  </span>
-              )}
+            <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                   <span className={`w-3 h-3 rounded-full ${getColorBadgeClass(wine.color)}`}></span>
+                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{wine.appellation || 'Appellation'}</span>
+                </div>
+                <h3 className="font-bold text-gray-900 leading-tight text-lg">{wine.name}</h3>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEditDomain(wine.domainId); }}
+                    className="text-sm font-medium text-red-700 hover:underline"
+                  >
+                    {domain?.name || 'Domaine inconnu'}
+                  </button>
+                  <span className="text-sm text-gray-500">{wine.millesime || 'N.V.'}</span>
+                </div>
+            </div>
+            <div className="flex flex-col items-end">
+                <span className={`text-2xl font-black ${wine.stock <= 6 ? 'text-red-500' : 'text-slate-900'}`}>
+                    {wine.stock}
+                </span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Unités</span>
             </div>
         </div>
 
-        <div className="flex items-stretch h-16 bg-gray-50">
+        <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-100 bg-gray-50/50">
             <button 
-              onClick={() => handleUpdate(-1)}
-              className="flex-1 flex items-center justify-center bg-white border-r border-gray-200 text-gray-400 active:bg-red-50 active:text-red-600 transition-colors touch-manipulation"
+              onClick={() => onEditWine(wine.id)}
+              className="py-3 text-xs font-bold text-gray-500 uppercase tracking-wider active:bg-gray-100"
             >
-              <Minus size={28} strokeWidth={3} />
+              Détails
             </button>
-            
-            <div className="w-24 flex flex-col items-center justify-center bg-white transition-colors duration-300 relative">
-              <span className={`text-3xl font-black tabular-nums tracking-tighter ${localStock === 0 ? 'text-red-500' : 'text-gray-800'}`}>
-                  {localStock}
-              </span>
-            </div>
-
             <button 
-              onClick={() => handleUpdate(1)}
-              className="flex-1 flex items-center justify-center bg-white border-l border-gray-200 text-gray-400 active:bg-green-50 active:text-green-600 transition-colors touch-manipulation"
+              onClick={() => onOpenAdjustmentModal(wine)}
+              className="py-3 text-xs font-bold text-red-700 uppercase tracking-wider active:bg-gray-100"
             >
-              <Plus size={28} strokeWidth={3} />
+              Ajuster Stock
             </button>
         </div>
     </div>
@@ -116,6 +69,7 @@ const MobileInventory = ({
   wines, 
   domains,
   onStockUpdate,
+  onOpenAdjustmentModal,
   onAddProduct,
   onExit,
   onEditDomain,
@@ -123,7 +77,8 @@ const MobileInventory = ({
 }: { 
   wines: Wine[], 
   domains: Domain[],
-  onStockUpdate: (id: string, newStock: number) => void,
+  onStockUpdate: (id: string, newStock: number, reason: string) => void,
+  onOpenAdjustmentModal: (wine: Wine) => void,
   onAddProduct: (wine: Wine, domainName?: string) => void,
   onExit: () => void,
   onEditDomain: (id: string) => void,
@@ -239,7 +194,7 @@ const MobileInventory = ({
                   key={wine.id} 
                   wine={wine} 
                   domain={domain} 
-                  onStockUpdate={onStockUpdate}
+                  onOpenAdjustmentModal={onOpenAdjustmentModal}
                   onEditDomain={onEditDomain}
                   onEditWine={onEditWine}
                />

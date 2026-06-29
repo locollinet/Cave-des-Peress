@@ -1,8 +1,8 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Plus, Eye, EyeOff, ChevronRight, ChevronDown, Pencil, Trash2, Copy, Package, Download, History, ShoppingCart, PackagePlus, CheckSquare, Square, PackageCheck, AlertCircle, ArrowRight, X } from 'lucide-react';
+import { Search, Plus, Eye, EyeOff, ChevronRight, ChevronDown, Pencil, Trash2, Copy, Package, Download, History, ShoppingCart, PackagePlus, CheckSquare, Square } from 'lucide-react';
 import { Wine, Domain, Invoice, StockMovement, Client, PurchaseItem } from '../types';
 import { formatCurrency, getColorBadgeClass, getSellingPrice, getSmartCoefficient } from '../utils';
+import { ADJUSTMENT_REASONS } from '../constants';
 
 const Inventory = ({ 
   wines, 
@@ -32,7 +32,7 @@ const Inventory = ({
   stockMovements: StockMovement[],
   facCount: number,
   proCount: number,
-  onStockUpdate: (id: string, newStock: number) => void,
+  onStockUpdate: (id: string, newStock: number, reason: string) => void,
   onAddProduct: (wine: Wine, domainName?: string, domainCoef?: number, domainRegion?: string) => void,
   onUpdateProduct: (wine: Wine, domainName?: string, domainCoef?: number, domainRegion?: string) => void,
   onDeleteProduct: (id: string) => void,
@@ -43,9 +43,14 @@ const Inventory = ({
   onEditDomain: (domainId: string) => void,
   onEditWine: (wineId: string | null, initialData?: Partial<Wine>) => void,
   onTransferTo: (wineIds: string[], destination: 'sales' | 'purchases') => void,
-  onConfirmPurchase: (provider: string, reference: string, items: PurchaseItem[], date?: string) => Promise<boolean>
+  onConfirmPurchase: (provider: string, reference: string, items: PurchaseItem[], date?: string, shippingCostHT?: number, impactStock?: boolean) => Promise<boolean>
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  // Adjustment Modal State
+  const [wineToAdjust, setWineToAdjust] = useState<Wine | null>(null);
+  const [adjustmentQuantity, setAdjustmentQuantity] = useState(0);
+  const [adjustmentReason, setAdjustmentReason] = useState(ADJUSTMENT_REASONS[0]);
+  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
   const [domainFilter, setDomainFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
   const [subRegionFilter, setSubRegionFilter] = useState('all');
@@ -56,38 +61,6 @@ const Inventory = ({
   // Selection State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // --- RECEPTION MODE STATE ---
-  const [isReceptionMode, setIsReceptionMode] = useState(false);
-  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
-  const [provider, setProvider] = useState('');
-  const [reference, setReference] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
-
-  // --- AUTO-ADD NEW WINE LOGIC (For Reception Mode) ---
-  const prevWineIdsRef = useRef<Set<string>>(new Set(wines.map(w => w.id)));
-  
-  // Cette Ref sert à savoir si on a cliqué sur "Nouveau" pour déclencher l'ajout auto
-  const isCreatingRef = useRef(false);
-
-  useEffect(() => {
-    const currentWineIds = new Set(wines.map(w => w.id));
-    
-    // Si on a plus de vins maintenant, que le mode réception est actif, et qu'on a cliqué sur Nouveau/Dupliquer
-    if (currentWineIds.size > prevWineIdsRef.current.size && isReceptionMode && isCreatingRef.current) {
-        const newWine = wines.find(w => !prevWineIdsRef.current.has(w.id));
-        if (newWine) {
-            setPurchaseItems(prev => {
-                if (prev.find(i => i.id === newWine.id)) return prev;
-                return [...prev, { ...newWine, quantity: 12, purchasePriceHT: newWine.buyingPriceHT }];
-            });
-            // On reset le flag
-            isCreatingRef.current = false; 
-        }
-    }
-    prevWineIdsRef.current = currentWineIds;
-  }, [wines, isReceptionMode]);
-
-
   const toggleRegion = (region: string) => {
     setCollapsedRegions(prev => 
       prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]
@@ -95,11 +68,6 @@ const Inventory = ({
   };
 
   const handleDuplicateClick = (wine: Wine) => {
-    // Si on est en mode réception, on active le flag pour l'ajout automatique au panier après création
-    if (isReceptionMode) {
-        isCreatingRef.current = true;
-    }
-    
     const copyData: Partial<Wine> = {
        ...wine,
        id: undefined, 
@@ -135,52 +103,14 @@ const Inventory = ({
     setSelectedIds(new Set());
   };
 
-  // --- RECEPTION HANDLERS ---
-  const addToPurchase = (wine: Wine) => {
-    setPurchaseItems(prev => {
-        const existing = prev.find(i => i.id === wine.id);
-        if (existing) {
-             // Increment if exists? Or just ignore? Let's increment
-             return prev.map(i => i.id === wine.id ? { ...i, quantity: i.quantity + 12 } : i);
-        }
-        return [...prev, { ...wine, quantity: 12, purchasePriceHT: wine.buyingPriceHT }];
-    });
-  };
-
-  const removeFromPurchase = (id: string) => {
-    setPurchaseItems(prev => prev.filter(i => i.id !== id));
-  };
-
-  const updatePurchaseItem = (id: string, field: 'quantity' | 'purchasePriceHT', value: number) => {
-    setPurchaseItems(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
-  };
-
-  const handleConfirmReception = async () => {
-    if (!provider) return alert('Nom du fournisseur requis');
-    if (purchaseItems.length === 0) return alert('La réception est vide');
-    
-    const success = await onConfirmPurchase(provider, reference, purchaseItems, purchaseDate);
-    if (success) {
-      alert("Réception validée et stock mis à jour !");
-      setPurchaseItems([]);
-      setProvider('');
-      setReference('');
-      setPurchaseDate(new Date().toISOString().split('T')[0]);
-      setIsReceptionMode(false);
-    }
-  };
-
-  const handleCreateNewWineInReception = () => {
-      isCreatingRef.current = true;
-      onEditWine(null);
-  };
-
   // Calcul du stock déporté total par vin
-  const externalStockByWine = useMemo(() => {
-    const map: Record<string, number> = {};
+  const externalStockDetails = useMemo(() => {
+    const map: Record<string, { total: number, details: string[] }> = {};
     clients.forEach(c => {
       c.externalStock.forEach(item => {
-        map[item.wineId] = (map[item.wineId] || 0) + item.quantity;
+        if (!map[item.wineId]) map[item.wineId] = { total: 0, details: [] };
+        map[item.wineId].total += item.quantity;
+        map[item.wineId].details.push(`${c.name} (${item.quantity})`);
       });
     });
     return map;
@@ -265,7 +195,7 @@ const Inventory = ({
     <div className="space-y-4 pb-20 relative h-full flex flex-col">
       
       {/* BARRE D'ACTION FLOTTANTE (MULTI-SELECTION) - Masquée si mode réception */}
-      {selectedIds.size > 0 && !isReceptionMode && (
+      {selectedIds.size > 0 && (
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl z-[100] flex items-center gap-6 animate-in slide-in-from-bottom-4 duration-300 border border-slate-700">
              <div className="flex items-center gap-3 border-r border-slate-700 pr-6">
                  <span className="bg-white text-slate-900 font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs">
@@ -351,21 +281,9 @@ const Inventory = ({
 
             {/* ACTION BUTTONS */}
             <div className="flex gap-2 flex-wrap md:flex-nowrap">
-               {/* TOGGLE RECEPTION MODE */}
-               <button 
-                 onClick={() => setIsReceptionMode(!isReceptionMode)}
-                 className={`px-4 py-2 border rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all shadow-sm flex-1 md:flex-none ${isReceptionMode ? 'bg-blue-600 border-blue-600 text-white ring-2 ring-blue-300 ring-offset-1' : 'bg-white border-gray-300 text-blue-700 hover:bg-blue-50'}`}
-               >
-                  <PackageCheck size={18} /> 
-                  <span className="hidden sm:inline">{isReceptionMode ? 'Mode Réception ACTIF' : 'Saisir une Facture Achat'}</span>
-                  <span className="sm:hidden">{isReceptionMode ? 'Réception' : 'Achat'}</span>
+               <button onClick={() => onEditWine(null)} className="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors flex items-center justify-center gap-2 text-sm font-medium shadow-sm flex-1 md:flex-none">
+                 <Plus size={18} /> <span className="hidden sm:inline">Nouveau Vin</span><span className="sm:hidden">Nouveau</span>
                </button>
-
-               {!isReceptionMode && (
-                  <button onClick={() => onEditWine(null)} className="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors flex items-center justify-center gap-2 text-sm font-medium shadow-sm flex-1 md:flex-none">
-                    <Plus size={18} /> <span className="hidden sm:inline">Nouveau Vin</span><span className="sm:hidden">Nouveau</span>
-                  </button>
-               )}
             </div>
           </div>
         </div>
@@ -373,7 +291,7 @@ const Inventory = ({
 
       <div className="flex gap-6 flex-1 min-h-0 flex-col md:flex-row">
         {/* MAIN INVENTORY TABLE */}
-        <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transition-all duration-300 ${isReceptionMode ? 'w-full md:w-2/3' : 'w-full'}`}>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transition-all duration-300 w-full">
           
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto flex-1">
@@ -401,11 +319,9 @@ const Inventory = ({
                     <React.Fragment key={region}>
                       <tr className="bg-slate-100 hover:bg-slate-200 cursor-pointer">
                         <td className="w-12 px-4 py-2 text-center" onClick={(e) => { e.stopPropagation(); selectRegion(regionWines); }}>
-                          {!isReceptionMode && (
                             <div className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${isRegionAllSelected ? 'bg-slate-600 border-slate-600' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
                                 {isRegionAllSelected && <CheckSquare size={14} className="text-white" />}
                             </div>
-                          )}
                         </td>
                         <td colSpan={7} className="px-6 py-2 font-bold text-slate-700 uppercase tracking-wide text-xs flex items-center gap-2" onClick={() => toggleRegion(region)}>
                           {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
@@ -418,39 +334,27 @@ const Inventory = ({
                         const isManualPrice = !!wine.sellingPriceHT;
                         const appliedCoef = wine.coefficient || domain?.coefficient || getSmartCoefficient(wine.buyingPriceHT);
                         const effectiveSubRegion = wine.subRegion;
-                        const externalStock = externalStockByWine[wine.id] || 0;
+                        const extStock = externalStockDetails[wine.id];
+                        const externalStock = extStock?.total || 0;
+                        const externalStockTooltip = extStock ? `Stock en dépôt :\n${extStock.details.join('\n')}` : "Stock en dépôt chez les clients";
                         const isSelected = selectedIds.has(wine.id);
                         
-                        // Check if in purchase items
-                        const inPurchase = purchaseItems.find(p => p.id === wine.id);
-
                         return (
                           <tr 
                               key={wine.id} 
                               className={`transition-colors border-l-4 
-                                  ${isReceptionMode 
-                                    ? (inPurchase ? 'bg-blue-50 border-blue-500' : 'hover:bg-blue-50/30 border-transparent cursor-pointer') 
-                                    : (isSelected ? 'bg-blue-50/80 border-transparent' : 'hover:bg-gray-50 border-transparent')
-                                  } 
-                                  ${wine.stock === 0 && !wine.isArchived && !inPurchase ? 'opacity-60' : ''} 
+                                  ${isSelected ? 'bg-blue-50/80 border-transparent' : 'hover:bg-gray-50 border-transparent'} 
+                                  ${wine.stock === 0 && !wine.isArchived ? 'opacity-60' : ''} 
                                   ${wine.isArchived ? 'bg-orange-50 opacity-80' : ''}`
                               }
                               onClick={() => {
-                                if (isReceptionMode) {
-                                   if (!inPurchase) addToPurchase(wine);
-                                } else {
-                                   toggleSelection(wine.id);
-                                }
+                                 toggleSelection(wine.id);
                               }}
                           >
                             <td className="w-12 px-4 py-4 text-center cursor-pointer">
-                               {isReceptionMode ? (
-                                  inPurchase ? <PackageCheck className="text-blue-600 mx-auto" size={20} /> : <Plus className="text-gray-300 mx-auto hover:text-blue-500" size={20} />
-                               ) : (
-                                  <div className={`w-5 h-5 border-2 rounded mx-auto flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`}>
-                                      {isSelected && <CheckSquare size={14} className="text-white" />}
-                                  </div>
-                               )}
+                                <div className={`w-5 h-5 border-2 rounded mx-auto flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`}>
+                                    {isSelected && <CheckSquare size={14} className="text-white" />}
+                                </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center">
@@ -491,20 +395,15 @@ const Inventory = ({
                                   <div className="flex items-center space-x-1">
                                      <span className={`inline-flex items-center justify-center w-12 py-0.5 rounded text-xs font-bold border ${
                                         wine.stock > 10 ? 'bg-green-100 text-green-800 border-green-200' : 
-                                        wine.stock > 0 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'
+                                        wine.stock > 0 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : (wine.stock === 0 ? 'bg-red-100 text-red-800 border-red-200' : 'bg-red-600 text-white border-red-700')
                                      }`}>
                                         {wine.stock}
                                      </span>
-                                     {!isReceptionMode && (
-                                       <div className="flex flex-col">
-                                          <button onClick={(e) => { e.stopPropagation(); onStockUpdate(wine.id, wine.stock + 1); }} className="px-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded text-[10px] leading-none mb-px">▲</button>
-                                          <button onClick={(e) => { e.stopPropagation(); onStockUpdate(wine.id, wine.stock - 1); }} className="px-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded text-[10px] leading-none" disabled={wine.stock <= 0}>▼</button>
-                                       </div>
-                                     )}
+                                     <button onClick={(e) => { e.stopPropagation(); setWineToAdjust(wine); setIsAdjustmentModalOpen(true); }} className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-bold">Ajuster</button>
                                   </div>
                                   {/* STOCK EXTERNE */}
                                   {externalStock > 0 && (
-                                     <div className="flex items-center gap-1 text-[10px] text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100" title="Stock en dépôt chez les clients">
+                                     <div className="flex items-center gap-1 text-[10px] text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 cursor-help" title={externalStockTooltip}>
                                         <Package size={10} /> Dépôt: <b>{externalStock}</b>
                                      </div>
                                   )}
@@ -521,11 +420,9 @@ const Inventory = ({
                                    <Copy size={16} />
                                  </button>
 
-                                 {!isReceptionMode && (
-                                   <button onClick={() => onToggleArchive(wine.id)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors" title={wine.isArchived ? "Désarchiver" : "Archiver"}>
-                                     {wine.isArchived ? <Eye size={16} /> : <EyeOff size={16} />}
-                                   </button>
-                                 )}
+                                 <button onClick={() => onToggleArchive(wine.id)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors" title={wine.isArchived ? "Désarchiver" : "Archiver"}>
+                                   {wine.isArchived ? <Eye size={16} /> : <EyeOff size={16} />}
+                                 </button>
                                </div>
                             </td>
                           </tr>
@@ -553,14 +450,12 @@ const Inventory = ({
                     onClick={() => toggleRegion(region)}
                   >
                     <div className="flex items-center gap-2">
-                      {!isReceptionMode && (
                         <div 
                           className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${isRegionAllSelected ? 'bg-slate-600 border-slate-600' : 'border-slate-300 bg-white'}`}
                           onClick={(e) => { e.stopPropagation(); selectRegion(regionWines); }}
                         >
                           {isRegionAllSelected && <CheckSquare size={14} className="text-white" />}
                         </div>
-                      )}
                       <span className="font-bold text-slate-700 uppercase tracking-wide text-xs">{region}</span>
                       <span className="text-gray-400 font-normal text-xs">({regionWines?.length || 0})</span>
                     </div>
@@ -574,30 +469,23 @@ const Inventory = ({
                         const domain = domains.find(d => d.id === wine.domainId);
                         const sellingPrice = getSellingPrice(wine, domain);
                         const isSelected = selectedIds.has(wine.id);
-                        const inPurchase = purchaseItems.find(p => p.id === wine.id);
-                        const externalStock = externalStockByWine[wine.id] || 0;
+                        const extStock = externalStockDetails[wine.id];
+                        const externalStock = extStock?.total || 0;
+                        const externalStockTooltip = extStock ? `Stock en dépôt :\n${extStock.details.join('\n')}` : "Stock en dépôt chez les clients";
 
                         return (
                           <div 
                             key={wine.id} 
-                            className={`p-4 flex gap-3 relative transition-colors ${isReceptionMode ? (inPurchase ? 'bg-blue-50' : '') : (isSelected ? 'bg-blue-50/80' : '')}`}
+                            className={`p-4 flex gap-3 relative transition-colors ${isSelected ? 'bg-blue-50/80' : ''}`}
                             onClick={() => {
-                              if (isReceptionMode) {
-                                if (!inPurchase) addToPurchase(wine);
-                              } else {
                                 toggleSelection(wine.id);
-                              }
                             }}
                           >
                             {/* Checkbox / Add icon */}
                             <div className="pt-1">
-                              {isReceptionMode ? (
-                                inPurchase ? <PackageCheck className="text-blue-600" size={20} /> : <Plus className="text-gray-300" size={20} />
-                              ) : (
                                 <div className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`}>
                                   {isSelected && <CheckSquare size={14} className="text-white" />}
                                 </div>
-                              )}
                             </div>
                             
                             {/* Details */}
@@ -630,18 +518,13 @@ const Inventory = ({
                                 
                                 <div className="flex flex-col items-end gap-1">
                                   <div className="flex items-center gap-2">
-                                    <span className={`inline-flex items-center justify-center px-2 py-1 rounded text-xs font-bold border ${wine.stock > 10 ? 'bg-green-100 text-green-800 border-green-200' : wine.stock > 0 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-800 border-red-200'}`}>
+                                    <span className={`inline-flex items-center justify-center px-2 py-1 rounded text-xs font-bold border ${wine.stock > 10 ? 'bg-green-100 text-green-800 border-green-200' : wine.stock > 0 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : wine.stock === 0 ? 'bg-red-100 text-red-800 border-red-200' : 'bg-red-600 text-white border-red-700'}`}>
                                       {wine.stock}
                                     </span>
-                                    {!isReceptionMode && (
-                                      <div className="flex flex-col">
-                                        <button onClick={(e) => { e.stopPropagation(); onStockUpdate(wine.id, wine.stock + 1); }} className="px-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded text-[10px] leading-none mb-px">▲</button>
-                                        <button onClick={(e) => { e.stopPropagation(); onStockUpdate(wine.id, wine.stock - 1); }} className="px-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded text-[10px] leading-none" disabled={wine.stock <= 0}>▼</button>
-                                      </div>
-                                    )}
+                                    <button onClick={(e) => { e.stopPropagation(); setWineToAdjust(wine); setIsAdjustmentModalOpen(true); }} className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-bold">Ajuster</button>
                                   </div>
                                   {externalStock > 0 && (
-                                    <div className="text-[10px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded-full border border-orange-100">
+                                    <div className="text-[10px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded-full border border-orange-100 cursor-help" title={externalStockTooltip}>
                                       Dépôt: {externalStock}
                                     </div>
                                   )}
@@ -656,11 +539,9 @@ const Inventory = ({
                                 <button onClick={() => handleDuplicateClick(wine)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Dupliquer">
                                   <Copy size={16} />
                                 </button>
-                                {!isReceptionMode && (
                                   <button onClick={() => onToggleArchive(wine.id)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors" title={wine.isArchived ? "Désarchiver" : "Archiver"}>
                                     {wine.isArchived ? <Eye size={16} /> : <EyeOff size={16} />}
                                   </button>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -674,128 +555,10 @@ const Inventory = ({
           </div>
         </div>
 
-        {/* RECEPTION SIDEBAR PANEL */}
-        {isReceptionMode && (
-          <div className="w-full md:w-1/3 bg-white rounded-xl shadow-xl border border-blue-200 flex flex-col animate-in slide-in-from-right duration-300">
-             <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
-                <h3 className="font-bold text-blue-900 flex items-center gap-2">
-                   <PackageCheck size={20} /> Réception Fournisseur
-                </h3>
-                <button onClick={() => setIsReceptionMode(false)} className="text-blue-400 hover:text-blue-700">
-                   <X size={20} />
-                </button>
-             </div>
-             
-             <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50/50">
-                  <button 
-                     onClick={handleCreateNewWineInReception}
-                     className="w-full py-2 bg-white border-2 border-dashed border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 hover:border-blue-500 transition-all font-bold flex items-center justify-center gap-2"
-                  >
-                     <Plus size={18} /> Créer référence manquante
-                  </button>
-                  <div className="grid grid-cols-2 gap-3">
-                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Fournisseur *</label>
-                        <input 
-                           type="text" 
-                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                           placeholder="Nom..."
-                           value={provider}
-                           onChange={e => setProvider(e.target.value)}
-                        />
-                     </div>
-                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Réf. Facture</label>
-                        <input 
-                           type="text" 
-                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                           placeholder="N°..."
-                           value={reference}
-                           onChange={e => setReference(e.target.value)}
-                        />
-                     </div>
-                  </div>
-             </div>
-
-             <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {purchaseItems.length === 0 ? (
-                   <div className="text-center py-10 text-gray-400 italic">
-                      Cliquez sur les vins dans la liste à gauche pour les ajouter au bon de réception.
-                   </div>
-                ) : (
-                   purchaseItems.map(item => {
-                      const oldStock = Math.max(0, item.stock);
-                      const newTotalQty = oldStock + item.quantity;
-                      const oldTotalVal = oldStock * item.buyingPriceHT;
-                      const newBatchVal = item.quantity * item.purchasePriceHT;
-                      const newCump = newTotalQty > 0 ? (oldTotalVal + newBatchVal) / newTotalQty : item.purchasePriceHT;
-
-                      return (
-                         <div key={item.id} className="bg-white border border-gray-200 p-3 rounded-lg text-sm shadow-sm relative group">
-                            <button 
-                               onClick={() => removeFromPurchase(item.id)}
-                               className="absolute top-2 right-2 text-gray-300 hover:text-red-500"
-                            >
-                               <Trash2 size={14} />
-                            </button>
-                            <div className="font-bold text-gray-800 w-11/12 truncate">{item.name}</div>
-                            <div className="text-xs text-gray-500 mb-2">{item.vintage}</div>
-                            
-                            <div className="flex gap-3 items-end">
-                               <div className="flex-1">
-                                  <label className="text-[10px] font-bold text-gray-400 block mb-0.5">Quantité</label>
-                                  <input 
-                                     type="number" 
-                                     className="w-full border border-gray-300 rounded px-2 py-1 font-bold text-center"
-                                     value={item.quantity}
-                                     onChange={(e) => updatePurchaseItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                                  />
-                               </div>
-                               <div className="flex-1">
-                                  <label className="text-[10px] font-bold text-gray-400 block mb-0.5">Prix Achat</label>
-                                  <input 
-                                     type="number"
-                                     step="0.01" 
-                                     className="w-full border border-gray-300 rounded px-2 py-1 font-bold text-center text-blue-700"
-                                     value={item.purchasePriceHT}
-                                     onChange={(e) => updatePurchaseItem(item.id, 'purchasePriceHT', parseFloat(e.target.value) || 0)}
-                                  />
-                               </div>
-                            </div>
-                            
-                            {Math.abs(item.purchasePriceHT - item.buyingPriceHT) > 0.01 && (
-                               <div className="mt-2 text-[10px] bg-yellow-50 text-yellow-800 p-1.5 rounded border border-yellow-100 flex items-center gap-1">
-                                  <AlertCircle size={10} /> Nouveau PMP estimé : <strong>{formatCurrency(newCump)}</strong>
-                               </div>
-                            )}
-                         </div>
-                      );
-                   })
-                )}
-             </div>
-
-             <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex justify-between items-center mb-4">
-                   <span className="font-bold text-gray-600">Total HT</span>
-                   <span className="font-bold text-xl text-blue-800">
-                      {formatCurrency(purchaseItems.reduce((acc, i) => acc + (i.quantity * i.purchasePriceHT), 0))}
-                   </span>
-                </div>
-                <button 
-                   onClick={handleConfirmReception}
-                   disabled={purchaseItems.length === 0}
-                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
-                >
-                   Valider l'Entrée en Stock <ArrowRight size={18} />
-                </button>
-             </div>
-          </div>
-        )}
       </div>
 
-      {/* HISTORIQUE (Visible seulement si pas en mode réception pour ne pas encombrer) */}
-      {!isReceptionMode && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-4 shrink-0">
+      {/* HISTORIQUE */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-4 shrink-0">
            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                  <History size={18} className="text-gray-500" /> Historique des Mouvements
@@ -846,6 +609,29 @@ const Inventory = ({
                     )}
                  </tbody>
               </table>
+           </div>
+        </div>
+      {isAdjustmentModalOpen && wineToAdjust && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-[200]">
+           <div className="bg-white p-6 rounded-lg max-w-sm w-full mx-4 shadow-xl">
+              <h2 className="text-xl font-bold mb-4">Ajuster {wineToAdjust.name}</h2>
+              <label className="block mb-4">
+                 Quantité (positive pour ajouter, négative pour retirer):
+                 <input type="number" className="border p-2 w-full roudned" value={adjustmentQuantity} onChange={(e) => setAdjustmentQuantity(Number(e.target.value))} />
+              </label>
+              <label className="block mb-4">
+                 Raison:
+                 <select className="border p-2 w-full rounded" value={adjustmentReason} onChange={(e) => setAdjustmentReason(e.target.value)}>
+                    {ADJUSTMENT_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                 </select>
+              </label>
+              <div className="flex justify-end gap-2">
+                 <button onClick={() => setIsAdjustmentModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded">Annuler</button>
+                 <button onClick={() => {
+                     onStockUpdate(wineToAdjust.id, wineToAdjust.stock + adjustmentQuantity, adjustmentReason);
+                     setIsAdjustmentModalOpen(false);
+                 }} className="px-4 py-2 bg-red-800 text-white rounded">Confirmer</button>
+              </div>
            </div>
         </div>
       )}

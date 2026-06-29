@@ -4,7 +4,9 @@ export enum WineColor {
   White = 'Blanc',
   Rose = 'Rosé',
   Sparkling = 'Effervescent',
-  Liquor = 'Spiritueux'
+  Liquor = 'Spiritueux',
+  BeerCider = 'Bière / Cidre',
+  Other = 'Autre'
 }
 
 export interface Domain {
@@ -29,6 +31,7 @@ export interface Wine {
   region?: string; // Override domain region
   subRegion?: string; // Specific sub-region for this wine (e.g. Côte de Beaune)
   format: string; // Ex: 'Bouteille (75cl)', 'Magnum (1.5L)'
+  isPreSale?: boolean; // NEW: Vin en prévente (n'impacte pas le stock)
 }
 
 export interface CartItem extends Wine {
@@ -38,12 +41,14 @@ export interface CartItem extends Wine {
   fromExternalStock?: boolean; // If true, stock is deducted from client, not main inventory
   isService?: boolean; // Si true, c'est une prestation ou produit libre
   vatRate?: number; // NEW: Taux de TVA spécifique (ex: 5.5, 10, 20)
+  movementId?: string; // Link to stock movement for purchases
 }
 
 // Interface spécifique pour le panier d'achat (Réception fournisseur)
 export interface PurchaseItem extends Wine {
   quantity: number;
   purchasePriceHT: number; // Le prix d'achat spécifique pour cette commande
+  vatRate?: number; // Taux de TVA appliqué à l'achat
 }
 
 export interface Invoice {
@@ -76,6 +81,8 @@ export interface StockMovement {
   reason?: string;
   // Nouveaux champs pour la gestion des achats (CUMP)
   price?: number;        // Prix unitaire du mouvement (si achat)
+  vatRate?: number;      // Taux de TVA appliqué à l'achat
+  tva?: number;          // Montant de la TVA
   provider?: string;     // Nom du fournisseur
   reference?: string;    // Numéro de facture fournisseur
   // Gestion Paiement Fournisseur (Nouveau)
@@ -84,6 +91,8 @@ export interface StockMovement {
   paymentMethod?: string;
   // Frais de port (Nouveau)
   shippingCost?: number; // Frais de port alloués à ce mouvement
+  impactStock?: boolean; // Si false, ce mouvement n'impacte pas le stock (ex: rétro-documentation)
+  isArchived?: boolean; // NEW: Archiver l'historique
 }
 
 export interface Client {
@@ -94,7 +103,7 @@ export interface Client {
   phone?: string;          // Mobile / Principal
   phoneLandline?: string;  // Fixe
   email?: string;
-  externalStock: { wineId: string; quantity: number }[];
+  externalStock: { wineId: string; quantity: number; sellingPriceHT?: number }[];
 }
 
 export interface Expense {
@@ -107,6 +116,20 @@ export interface Expense {
   amountTVA: number;
   amountTTC: number;
   paymentMethod: string;
+  assetId?: string; // Link to an asset if this expense is an investment
+}
+
+export interface Asset {
+  id: string;
+  name: string;
+  category: string;
+  purchaseDate: string;
+  amountHT: number;
+  vatAmount: number;
+  durationYears: number; // Depreciation period (e.g., 3, 5, 10 years)
+  startDepreciationDate: string; // Usually same as purchase date
+  description?: string;
+  isArchived?: boolean;
 }
 
 export interface ExpenseCategory {

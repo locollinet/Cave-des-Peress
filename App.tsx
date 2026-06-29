@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAppController } from './hooks';
 import { Domain, Wine, Client } from './types';
-import { AlertTriangle, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 // Components
 import Sidebar from './components/Sidebar';
@@ -18,10 +18,12 @@ import Domains from './components/Domains';
 import GeneralAccounting from './components/GeneralAccounting';
 import VatReport from './components/VatReport'; // NEW
 import MobileInventory from './components/MobileInventory';
-import Projection from './components/Projection';
+import StrategicAnalysis from './components/StrategicAnalysis';
+import { StockLog } from './components/StockLog';
 import DomainModal from './components/DomainModal';
 import WineModal from './components/WineModal';
 import ClientModal from './components/ClientModal';
+import AdjustmentModal from './components/AdjustmentModal';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -46,6 +48,10 @@ function App() {
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
+  // Ajustement Stock
+  const [wineToAdjust, setWineToAdjust] = useState<Wine | null>(null);
+  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
+
 
   // --- HANDLERS D'OUVERTURE ---
 
@@ -68,6 +74,8 @@ function App() {
             setWineToEdit(wine);
             setWineInitialData(undefined);
             setIsWineModalOpen(true);
+        } else {
+            alert("Cette référence n'existe plus dans le catalogue.");
         }
     } else {
         // Mode Création (ou duplication si initialData fourni)
@@ -155,16 +163,6 @@ function App() {
       </div>
 
       <main className="md:ml-64 flex-1 p-4 md:p-8 overflow-x-hidden print:ml-0 print:p-0 relative">
-        {data.isSimulation && (
-          <div className="bg-orange-500 text-white px-4 py-2 mb-4 rounded-lg shadow-md flex items-center gap-3 animate-pulse">
-            <AlertTriangle className="shrink-0" size={24} />
-            <div>
-              <p className="font-bold text-lg leading-none">MODE SIMULATION ACTIVÉ</p>
-              <p className="text-sm opacity-90">Toutes les actions (création, modification, suppression) sont simulées et n'impactent pas la base de données réelle.</p>
-            </div>
-          </div>
-        )}
-
         <header className="flex justify-between items-center mb-6 md:mb-8 print:hidden">
           <div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">
@@ -177,9 +175,10 @@ function App() {
               {currentView === 'sales' && 'Point de Vente'}
               {currentView === 'clients' && 'Clients & Stocks Déportés'}
               {currentView === 'accounting' && 'Facturation'}
-              {currentView === 'general_accounting' && 'Trésorerie & Dépenses'}
+              {currentView === 'bilan' && 'Bilan & Gestion'}
               {currentView === 'vat_report' && 'Bilan TVA & Déclarations'}
               {currentView === 'wine_menu' && 'Carte des Vins'}
+              {currentView === 'stock_log' && 'Journal des Mouvements de Stock'}
               {currentView === 'settings' && 'Paramètres'}
             </h2>
           </div>
@@ -195,13 +194,22 @@ function App() {
             expenses={data.expenses} // Passed to fix the overhead calculation
           />
         )}
+        {currentView === 'stock_log' && (
+          <StockLog 
+            movements={data.stockMovements}
+            wines={data.wines}
+            domains={data.domains}
+          />
+        )}
         {currentView === 'projection' && (
-          <Projection
+          <StrategicAnalysis
             wines={data.wines}
             invoices={data.invoices}
             movements={data.stockMovements}
             clients={data.clients}
             expenses={data.expenses}
+            domains={data.domains}
+            selectedYear="all"
           />
         )}
         {currentView === 'inventory' && (
@@ -232,6 +240,7 @@ function App() {
             wines={data.wines} 
             domains={data.domains}
             onStockUpdate={actions.handleStockUpdate}
+            onOpenAdjustmentModal={(wine) => { setWineToAdjust(wine); setIsAdjustmentModalOpen(true); }}
             onAddProduct={actions.handleAddProduct}
             onExit={() => setCurrentView('dashboard')}
             onEditDomain={handleEditDomain} 
@@ -243,11 +252,13 @@ function App() {
             wines={data.wines} 
             domains={data.domains} 
             stockMovements={data.stockMovements}
+            invoices={data.invoices}
             initialSelection={transferSelection}
             onClearInitialSelection={clearTransferSelection}
             onConfirmPurchase={actions.handleReception}
             onCancelPurchase={actions.handleCancelReception}
-            onUpdatePurchaseAmount={actions.handleUpdateReceptionAmount}
+            onDeleteInvoice={actions.handleDeleteInvoice}
+            onUpdatePurchaseItem={actions.handleUpdateReceptionItem}
             onUpdateShippingCost={actions.handleUpdateReceptionShippingCost}
             onEditDomain={handleEditDomain}
             onEditWine={handleEditWine}
@@ -294,6 +305,7 @@ function App() {
                setCurrentView('accounting');
             }}
             onStockTransfer={actions.handleStockTransfer}
+            onBulkStockTransfer={actions.handleBulkStockTransfer}
             onEditDomain={handleEditDomain}
             onEditWine={handleEditWine}
             onEditClient={handleEditClient}
@@ -304,6 +316,7 @@ function App() {
             invoices={data.invoices}
             clients={data.clients}
             wines={data.wines}
+            domains={data.domains}
             stockMovements={data.stockMovements}
             onUpdateStatus={actions.handleInvoiceStatusUpdate}
             onUpdateInvoice={actions.handleUpdateInvoice}
@@ -311,36 +324,40 @@ function App() {
             onDeleteInvoice={actions.handleDeleteInvoice}
             logo={data.logo} 
             onEditClient={handleEditClient}
+            onEditWine={handleEditWine}
             onImportHistoricalInvoice={actions.handleImportHistoricalInvoice}
           />
         )}
-        {currentView === 'general_accounting' && (
+        {currentView === 'bilan' && (
           <GeneralAccounting 
+            defaultTab="report"
             expenses={data.expenses}
             categories={data.expenseCategories}
+            assets={data.assets}
             invoices={data.invoices}
             stockMovements={data.stockMovements}
             onAddExpense={actions.handleAddExpense}
             onDeleteExpense={actions.handleDeleteExpense}
             onAddCategory={actions.handleAddCategory}
             onDeleteCategory={actions.handleDeleteCategory}
+            onAddAsset={actions.handleAddAsset}
+            onDeleteAsset={actions.handleDeleteAsset}
           />
         )}
         {currentView === 'vat_report' && (
           <VatReport 
             invoices={data.invoices}
-            stockMovements={data.stockMovements}
             expenses={data.expenses}
+            wines={data.wines}
+            domains={data.domains}
           />
         )}
-        {currentView === 'wine_menu' && <WineMenu wines={data.wines} domains={data.domains} isEmbedded={true} logo={data.logo} />}
+        {currentView === 'wine_menu' && <WineMenu wines={data.wines} domains={data.domains} isEmbedded={true} logo={data.logo} onUpdateWine={actions.handleUpdateProduct} onEditWine={() => handleEditWine(null)} />}
         {currentView === 'settings' && (
           <SettingsView
             wines={data.wines} domains={data.domains} invoices={data.invoices} stockMovements={data.stockMovements} facCount={data.facCount} proCount={data.proCount}
             logo={data.logo} 
             onLogoUpdate={actions.setLogo}
-            isSimulation={data.isSimulation}
-            onToggleSimulation={actions.setIsSimulation}
           />
         )}
 
@@ -370,6 +387,13 @@ function App() {
           onClose={() => setIsClientModalOpen(false)}
           client={clientToEdit || undefined}
           onSave={handleSaveClient}
+        />
+
+        <AdjustmentModal 
+          isOpen={isAdjustmentModalOpen}
+          onClose={() => setIsAdjustmentModalOpen(false)}
+          wine={wineToAdjust}
+          onConfirm={actions.handleStockUpdate}
         />
 
       </main>

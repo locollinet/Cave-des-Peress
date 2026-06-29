@@ -11,9 +11,7 @@ const SettingsView = ({
   facCount,
   proCount,
   logo,
-  onLogoUpdate,
-  isSimulation,
-  onToggleSimulation
+  onLogoUpdate
 }: {
   wines: Wine[],
   domains: Domain[],
@@ -22,9 +20,7 @@ const SettingsView = ({
   facCount: number,
   proCount: number,
   logo: string,
-  onLogoUpdate: (newLogo: string) => void,
-  isSimulation: boolean,
-  onToggleSimulation: (val: boolean) => void
+  onLogoUpdate: (newLogo: string) => void
 }) => {
   const logoInputRef = useRef<HTMLInputElement>(null);
   
@@ -67,32 +63,6 @@ const SettingsView = ({
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       
-      {/* SECTION SIMULATION MODE */}
-      <div className={`rounded-xl shadow-sm border p-6 transition-colors ${isSimulation ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-200'}`}>
-         <h2 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isSimulation ? 'text-orange-800' : 'text-gray-800'}`}>
-           <AlertTriangle size={20} /> Mode Simulation (Sandbox)
-         </h2>
-         <div className="flex items-center justify-between">
-            <div className="mr-6">
-               <p className={`text-sm mb-1 font-medium ${isSimulation ? 'text-orange-900' : 'text-gray-700'}`}>Activer le mode "Bac à sable"</p>
-               <p className={`text-xs ${isSimulation ? 'text-orange-700' : 'text-gray-500'}`}>
-                  Une fois activé, toutes les modifications (factures, stock, clients) seront <strong>simulées</strong>. 
-                  Rien ne sera enregistré dans la base de données. Idéal pour tester sans risque.
-               </p>
-            </div>
-            <button 
-               onClick={() => onToggleSimulation(!isSimulation)}
-               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-600 focus:ring-offset-2 ${isSimulation ? 'bg-orange-600' : 'bg-gray-200'}`}
-            >
-               <span className="sr-only">Toggle Simulation</span>
-               <span
-                  aria-hidden="true"
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isSimulation ? 'translate-x-5' : 'translate-x-0'}`}
-               />
-            </button>
-         </div>
-      </div>
-
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
            <ImageIcon size={20} /> Personnalisation

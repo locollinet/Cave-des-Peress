@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Wine, FileText, ShoppingCart, BookOpen, Settings, Users, Globe, PackagePlus, LineChart, ScanBarcode, Landmark, Scale, X } from 'lucide-react';
+import { LayoutDashboard, Wine, FileText, ShoppingCart, BookOpen, Settings, Users, Globe, PackagePlus, LineChart, ScanBarcode, Landmark, Scale, X, FileClock, History } from 'lucide-react';
 import { DEFAULT_LOGO_URL } from '../utils';
 
 const SectionTitle = ({ title }: { title: string }) => (
@@ -93,6 +93,9 @@ const Sidebar = ({
           <button onClick={() => handleNavClick('inventory')} className={navButtonClass('inventory')}>
             <Wine size={18} /><span className="font-medium">Gestion du Stock</span>
           </button>
+          <button onClick={() => handleNavClick('stock_log')} className={navButtonClass('stock_log')}>
+            <History size={18} /><span className="font-medium">Journal de Stock</span>
+          </button>
           <button onClick={() => handleNavClick('purchases')} className={navButtonClass('purchases')}>
             <PackagePlus size={18} /><span className="font-medium">Achats & Réception</span>
           </button>
@@ -109,8 +112,8 @@ const Sidebar = ({
           <button onClick={() => handleNavClick('accounting')} className={navButtonClass('accounting')}>
             <FileText size={18} /><span className="font-medium">Facturation</span>
           </button>
-          <button onClick={() => handleNavClick('general_accounting')} className={navButtonClass('general_accounting')}>
-            <Landmark size={18} /><span className="font-medium">Trésorerie & Frais</span>
+          <button onClick={() => handleNavClick('bilan')} className={navButtonClass('bilan')}>
+            <Landmark size={18} /><span className="font-medium">Bilan & Gestion</span>
           </button>
           <button onClick={() => handleNavClick('vat_report')} className={navButtonClass('vat_report')}>
             <Scale size={18} /><span className="font-medium">Bilan TVA</span>
@@ -134,6 +137,10 @@ const Sidebar = ({
           <button onClick={() => handleNavClick('settings')} className={navButtonClass('settings')}>
             <Settings size={18} /><span className="font-medium">Paramètres</span>
           </button>
+          <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-slate-800/50 rounded-full w-fit">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-[10px] text-slate-400 font-medium">Production v1.0.2</span>
+          </div>
         </div>
       </aside>
     </>

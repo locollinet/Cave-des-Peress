@@ -174,6 +174,15 @@ const Cart = ({
     }));
   };
 
+  const setQuantity = (id: string, newQ: number, fromExternal: boolean = false) => {
+    setCartItems(prev => prev.map(i => {
+      if (i.id === id && (i.fromExternalStock || false) === fromExternal) {
+        return { ...i, quantity: Math.max(1, newQ) };
+      }
+      return i;
+    }));
+  };
+
   const updatePrice = (id: string, newPrice: string, fromExternal: boolean = false) => {
     const parsedPrice = parseFloat(newPrice);
     if (isNaN(parsedPrice)) return;
@@ -278,7 +287,7 @@ const Cart = ({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:h-[calc(100vh-100px)]">
-       <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-[60vh] lg:h-auto">
+       <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-[60vh] lg:h-full">
           <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -539,7 +548,12 @@ const Cart = ({
                             <span className="text-xs text-gray-500">x</span>
                             <div className="flex items-center gap-1 bg-white rounded border border-gray-200 shadow-sm">
                                 <button onClick={() => updateQuantity(item.id, -1, item.fromExternalStock)} className="px-2 py-1 hover:bg-gray-100 rounded-l border-r font-bold text-gray-600">-</button>
-                                <span className="px-2 py-1 font-medium text-gray-900 min-w-[20px] text-center">{item.quantity}</span>
+                                <input 
+                                    type="number"
+                                    className="w-12 text-center font-medium text-gray-900 outline-none"
+                                    value={item.quantity}
+                                    onChange={(e) => setQuantity(item.id, parseInt(e.target.value) || 1, item.fromExternalStock)}
+                                />
                                 <button onClick={() => updateQuantity(item.id, 1, item.fromExternalStock)} className="px-2 py-1 hover:bg-gray-100 rounded-r border-l font-bold text-gray-600">+</button>
                             </div>
                         </div>
