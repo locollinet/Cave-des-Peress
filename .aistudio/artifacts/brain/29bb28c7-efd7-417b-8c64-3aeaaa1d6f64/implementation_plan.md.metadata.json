@@ -1,6 +1,6 @@
 {
-  "summary": "Plan d'implémentation et Master Prompt ajustés pour connecter la nouvelle application à Firebase Firestore (base nommée ai-studio-lacavedesperess-29bb28c7-efd7-417b-8c64-3aeaaa1d6f64) en parallel run.",
-  "updatedAt": "2026-10-14T12:36:27.670400733Z",
+  "summary": "Plan complet de modernisation et de migration sécurisée pour La Cave des Pères. Séquencement en 2 phases avec garantie zéro perte de données (sauvegarde Supabase, provisionnement Firebase Firestore, réconciliation des 6 416 mouvements et 677 vins, puis refonte UI moderne Sommelier Bordeaux/Ardoise avec tiroirs latéraux et optimisation mobile/bureau).",
+  "updatedAt": "2026-10-13T15:16:17.466248314Z",
   "requestFeedback": true,
   "userFacing": true
 }
