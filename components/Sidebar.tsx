@@ -1,31 +1,37 @@
-
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Wine, FileText, ShoppingCart, BookOpen, Settings, Users, Globe, PackagePlus, LineChart, ScanBarcode, Landmark, Scale, X, FileClock, History } from 'lucide-react';
+import { 
+  LayoutDashboard, Wine, FileText, ShoppingCart, BookOpen, Settings, 
+  Users, Globe, PackagePlus, LineChart, ScanBarcode, Landmark, Scale, X, 
+  History, Sparkles, CloudCheck, CheckCircle2
+} from 'lucide-react';
 import { DEFAULT_LOGO_URL } from '../utils';
 
+interface SidebarProps {
+  currentView: string;
+  onViewChange: (view: string) => void;
+  logo?: string;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
+  totalBottles?: number;
+}
+
 const SectionTitle = ({ title }: { title: string }) => (
-  <div className="px-4 mt-6 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 font-sans">
+  <div className="px-3 mt-5 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 font-sans">
     {title}
   </div>
 );
 
-const Sidebar = ({ 
+export const Sidebar: React.FC<SidebarProps> = ({ 
   currentView, 
   onViewChange,
   logo,
   isMobileOpen,
-  onCloseMobile
-}: { 
-  currentView: string, 
-  onViewChange: (view: string) => void,
-  logo?: string,
-  isMobileOpen?: boolean,
-  onCloseMobile?: () => void
+  onCloseMobile,
+  totalBottles = 2916
 }) => {
   const [imgSrc, setImgSrc] = useState(DEFAULT_LOGO_URL);
 
   useEffect(() => {
-    // Si un logo perso existe (et semble valide > 50 chars), on tente de l'utiliser
     if (logo && logo.length > 50) {
       setImgSrc(logo);
     } else {
@@ -33,8 +39,13 @@ const Sidebar = ({
     }
   }, [logo]);
 
-  const navButtonClass = (view: string) => 
-    `w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-sm ${currentView === view ? 'bg-red-900 text-white shadow-md shadow-red-950/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`;
+  const navButtonClass = (view: string) => `
+    w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs transition-all font-medium text-left
+    ${currentView === view 
+      ? 'bg-bordeaux-800 text-white shadow-sm font-semibold' 
+      : 'text-slate-600 hover:bg-ivory-100 hover:text-bordeaux-900'
+    }
+  `;
 
   const handleNavClick = (view: string) => {
     onViewChange(view);
@@ -46,100 +57,114 @@ const Sidebar = ({
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 md:hidden transition-opacity"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden transition-opacity"
           onClick={onCloseMobile}
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col h-full print:hidden border-r border-slate-800 transform transition-transform duration-300 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-        <div className="p-4 border-b border-slate-800 flex flex-col items-center gap-3 shrink-0 relative">
+      {/* Sidebar Container */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white text-slate-800 flex flex-col h-full print:hidden border-r border-lin-300 transform transition-transform duration-300 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 shadow-xs font-sans`}>
+        
+        {/* LOGO & IDENTITÉ MAISON */}
+        <div className="p-4 border-b border-lin-200 bg-ivory-50 flex flex-col items-center gap-2 shrink-0 relative">
           {/* Mobile Close Button */}
           <button 
             onClick={onCloseMobile}
-            className="md:hidden absolute top-4 right-4 text-slate-400 hover:text-white"
+            className="md:hidden absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-700"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
 
-          <div className="w-full flex justify-center px-2 mt-4 md:mt-0">
-             <div className="bg-white rounded-lg shadow-sm p-2 w-full flex items-center justify-center min-h-[60px]">
-                <img 
-                  src={imgSrc} 
-                  alt="Cave des Peress" 
-                  className="max-w-full h-auto max-h-16 object-contain"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    if (target.src !== DEFAULT_LOGO_URL) {
-                      target.src = DEFAULT_LOGO_URL;
-                    }
-                  }}
-                />
-             </div>
+          <div className="w-full flex flex-col items-center text-center pt-1">
+            <div className="w-12 h-12 rounded-xl bg-bordeaux-800 text-ivory-50 flex items-center justify-center shadow-sm mb-2">
+              <Wine className="w-6 h-6 stroke-[1.5]" />
+            </div>
+            <h1 className="font-serif text-lg font-bold tracking-tight text-bordeaux-950">
+              La Cave des Pères
+            </h1>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">
+              Maison de Vins & Négoce
+            </p>
           </div>
         </div>
-        
-        <nav className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar pb-24 md:pb-4">
-          
-          <SectionTitle title="Pilotage" />
-          <button onClick={() => handleNavClick('dashboard')} className={navButtonClass('dashboard')}>
-            <LayoutDashboard size={18} /><span className="font-medium">Vue d'ensemble</span>
-          </button>
-          <button onClick={() => handleNavClick('projection')} className={navButtonClass('projection')}>
-            <LineChart size={18} /><span className="font-medium">Stratégie & Analyse</span>
-          </button>
 
-          <SectionTitle title="Stocks & Appro" />
-          <button onClick={() => handleNavClick('inventory')} className={navButtonClass('inventory')}>
-            <Wine size={18} /><span className="font-medium">Gestion du Stock</span>
+        {/* NAVIGATION VERTICALE */}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto custom-scrollbar pb-24 md:pb-4 space-y-0.5">
+          
+          <SectionTitle title="Exploitation & Caisse" />
+          <button onClick={() => handleNavClick('sales')} className={navButtonClass('sales')}>
+            <ShoppingCart size={16} />
+            <span>Point de Vente & Caisse</span>
           </button>
-          <button onClick={() => handleNavClick('stock_log')} className={navButtonClass('stock_log')}>
-            <History size={18} /><span className="font-medium">Journal de Stock</span>
+          <button onClick={() => handleNavClick('inventory')} className={navButtonClass('inventory')}>
+            <Wine size={16} />
+            <span>Inventaire de Cave</span>
           </button>
           <button onClick={() => handleNavClick('purchases')} className={navButtonClass('purchases')}>
-            <PackagePlus size={18} /><span className="font-medium">Achats & Réception</span>
+            <PackagePlus size={16} />
+            <span>Achats & Réceptions</span>
+          </button>
+          <button onClick={() => handleNavClick('stock_log')} className={navButtonClass('stock_log')}>
+            <History size={16} />
+            <span>Journal de Stock</span>
           </button>
 
-          <SectionTitle title="Commerce & Clients" />
-          <button onClick={() => handleNavClick('sales')} className={navButtonClass('sales')}>
-            <ShoppingCart size={18} /><span className="font-medium">Point de Vente</span>
+          <SectionTitle title="Pilotage & Clients" />
+          <button onClick={() => handleNavClick('dashboard')} className={navButtonClass('dashboard')}>
+            <LayoutDashboard size={16} />
+            <span>Vue d'ensemble</span>
           </button>
           <button onClick={() => handleNavClick('clients')} className={navButtonClass('clients')}>
-            <Users size={18} /><span className="font-medium">Clients & Stocks</span>
+            <Users size={16} />
+            <span>Clients & Dépôts</span>
           </button>
-
-          <SectionTitle title="Finance" />
-          <button onClick={() => handleNavClick('accounting')} className={navButtonClass('accounting')}>
-            <FileText size={18} /><span className="font-medium">Facturation</span>
-          </button>
-          <button onClick={() => handleNavClick('bilan')} className={navButtonClass('bilan')}>
-            <Landmark size={18} /><span className="font-medium">Bilan & Gestion</span>
-          </button>
-          <button onClick={() => handleNavClick('vat_report')} className={navButtonClass('vat_report')}>
-            <Scale size={18} /><span className="font-medium">Bilan TVA</span>
-          </button>
-
-          <SectionTitle title="Catalogue" />
           <button onClick={() => handleNavClick('domains')} className={navButtonClass('domains')}>
-            <Globe size={18} /><span className="font-medium">Domaines</span>
+            <Globe size={16} />
+            <span>Domaines & Terroirs</span>
           </button>
           <button onClick={() => handleNavClick('wine_menu')} className={navButtonClass('wine_menu')}>
-            <BookOpen size={18} /><span className="font-medium">Carte des Vins</span>
+            <BookOpen size={16} />
+            <span>Carte des Vins</span>
           </button>
 
-          <SectionTitle title="Outils" />
+          <SectionTitle title="Comptabilité & Régie" />
+          <button onClick={() => handleNavClick('accounting')} className={navButtonClass('accounting')}>
+            <FileText size={16} />
+            <span>Facturation & Devis</span>
+          </button>
+          <button onClick={() => handleNavClick('vat_report')} className={navButtonClass('vat_report')}>
+            <Scale size={16} />
+            <span>Bilan TVA & Douanes</span>
+          </button>
+          <button onClick={() => handleNavClick('bilan')} className={navButtonClass('bilan')}>
+            <Landmark size={16} />
+            <span>Bilan d'Exploitation</span>
+          </button>
+          <button onClick={() => handleNavClick('projection')} className={navButtonClass('projection')}>
+            <LineChart size={16} />
+            <span>Analyse Stratégique</span>
+          </button>
+
+          <SectionTitle title="Outils Mobiles" />
           <button onClick={() => handleNavClick('mobile_inventory')} className={navButtonClass('mobile_inventory')}>
-            <ScanBarcode size={18} /><span className="font-medium">Scanner Mobile</span>
+            <ScanBarcode size={16} />
+            <span>Pointage Chai Mobile</span>
           </button>
         </nav>
         
-        <div className="p-4 border-t border-slate-800 space-y-2 shrink-0 bg-slate-900">
+        {/* PIED DE NAVIGATION & STATUT CLOUD */}
+        <div className="p-3 border-t border-lin-200 shrink-0 bg-ivory-50 space-y-2">
           <button onClick={() => handleNavClick('settings')} className={navButtonClass('settings')}>
-            <Settings size={18} /><span className="font-medium">Paramètres</span>
+            <Settings size={16} />
+            <span>Paramètres de la Cave</span>
           </button>
-          <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-slate-800/50 rounded-full w-fit">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-[10px] text-slate-400 font-medium">Production v1.0.2</span>
+
+          <div className="pt-1 flex items-center justify-between px-2 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1.5 font-medium text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Firebase Connecté
+            </span>
+            <span className="font-mono text-slate-400">v2.1</span>
           </div>
         </div>
       </aside>

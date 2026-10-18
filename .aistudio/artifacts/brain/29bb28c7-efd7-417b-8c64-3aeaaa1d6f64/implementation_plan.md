@@ -1,142 +1,76 @@
-# Modernisation & Migration Sécurisée — La Cave des Pères
+# Diagnostic & Verrouillage du Design — La Cave des Pères
 
-Plan directeur d'architecture et de migration pour faire évoluer l'ERP caviste de Supabase vers Firebase Firestore, tout en préparant la refonte ergonomique « Sommelier Moderne » sans aucune perte de données ni interruption d'activité pour l'oncle.
+Analyse des causes de réapparition du visuel modifié lors des reconnexions à Google AI Studio, et stratégie pour figer définitivement la version souhaitée (Bandeau sombre avec bordeaux et blanc).
 
 ---
 
 > [!IMPORTANT]
-> ### Arbitrages confirmés par l'utilisateur (Phase 1)
-> 1. **Séquençage sécurisé (2 Phases)** : **Phase 1** dédiée à la migration intégrale des données vers Firebase Firestore à iso-fonctionnalités (zéro risque, zéro perte). Puis **Phase 2** dédiée à la modernisation ergonomique, au design sombre bordeaux/ardoise et au refactoring de l'architecture logicielle.
-> 2. **Direction visuelle & ergonomique** : Ambiance **Sombre Premium (Bordeaux, Ardoise, Chêne, Or discret)** avec remplacement des modales intrusives par des **tiroirs latéraux (Slide-overs / Sheets)**, navigation épurée et barre de saisie rapide (Command Palette / Raccourcis).
-> 3. **Cible matérielle mixte** : Optimisation hybride pour l'**écran de caisse/bureau** (densité, raccourcis clavier, double affichage) et pour le **smartphone/tablette tactile au chai** (zones tactiles larges $\ge 44\text{px}$, pointage des arrivages, inventaire rapide).
+> ### Décision Utilisateur Confirmée
+> - **Visuel cible définitif** : Conservation intégrale du design de référence avec le **bandeau sombre (slate-900), accents bordeaux (#881337 / red-900) et texte blanc**.
+> - **Rejet formel de l'autre design** : Aucun passage au mode sombre intégral ("Dark mode exécutif type Linear / Atlas") ni altération de la disposition actuelle.
+> - **Consigne de sécurité** : Zéro modification de code exécutée durant cette phase d'analyse.
 
 ---
 
-## 1. Vue d'ensemble & Enjeux Métier
+## 1. Pourquoi le visuel modifié réapparaît-il à chaque reconnexion ?
 
-### Ce que fait l'application
-L'application est l'outil d'exploitation quotidien de la cave :
-- **Catalogue & Régie viticole** : 677 références de vins réparties sur 203 domaines, avec appellations, millésimes, formats (75cl, Magnums), coefficients multiplicateurs et prix d'achat HT.
-- **Gestion fine du Stock & CUMP** : 6 416 mouvements tracés. Chaque réception fournisseur calcule le Coût Unitaire Moyen Pondéré (CUMP/PMP) intégrant le prix d'achat HT et les frais d'approche/transport au prorata.
-- **Conformité Douanière (DRM)** : Suivi en temps réel de la balance des matières par couleur (Rouge, Blanc, Rosé, Effervescent, Spiritueux) pour la Déclaration Récapitulative Mensuelle des douanes.
-- **Cycle Commercial & Facturation** : Gestion des devis, factures pro-forma, factures validées/payées, règlements, avoirs et stocks déportés (consignations chez les restaurateurs).
-- **Comptabilité analytique & Trésorerie** : Ventilation de TVA, charges courantes et amortissement des immobilisations.
+L'analyse technique approfondie du workspace et de l'environnement Google AI Studio identifie **4 causes interdépendantes** :
 
-### Utilisateurs cibles
-- **L'Oncle (Maître de chai & gérant)** : A besoin de rapidité absolue au comptoir lors de l'encaissement et de simplicité tactile dans le chai pour valider les livraisons et ajuster les stocks.
-- **L'Expert-comptable / Les Douanes** : Exigent une intégrité mathématique absolue sur les numéros de facture, la balance DRM et les valeurs de stock.
+### Cause 1 : Présence d'instructions système parasites dans le projet AI Studio (Cause Racine Principale)
+Dans les paramètres du projet AI Studio (`additional_user_instructions`), des directives pour une application tierce (« Atlas — Démonstrateur APM ») avec pour consigne stricte :
+> *"DIRECTION ARTISTIQUE (exigence forte) : Dark mode exécutif par défaut, esthétique premium type Linear / terminal financier : fonds profonds..."*
 
----
+À chaque fois qu'une nouvelle session ou qu'une requête d'évolution est lancée dans AI Studio, l'IA reçoit ces instructions système en tâche de fond. Lors des précédentes évolutions, l'assistant a donc cru devoir aligner l'application sur ce style sombre exécutif, modifiant les composants visuels (`Sidebar.tsx`, `App.tsx`, `Dashboard.tsx`).
 
-## 2. Expérience Utilisateur & Design System « Sommelier Moderne »
+### Cause 2 : Gestion des snapshots et branches de session dans AI Studio
+Dans AI Studio :
+- Les modifications de code sont enregistrées dans le snapshot du conteneur lié à votre session.
+- Si une évolution a été faite dans un chat précédent qui a touché aux fichiers de style, ce conteneur reste dans cet état modifié lors de votre reconnexion.
+- Si vous changez de discussion ou rechargez l'espace, AI Studio recharge l'état du conteneur actif, qui contient encore les fragments du visuel modifié par l'évolution passée.
 
-### Direction Artistique
-- **Palette (Règle 60-30-10)** :
-  - **60% Toile neutre sombre** : Fond ardoise profonde (`#0B0F17` / `#111827`) évitant la fatigue visuelle au chai et les reflets en boutique.
-  - **30% Surfaces & Reliefs** : Panneaux et tiroirs en teinte lie-de-vin feutrée (`#1A1218`) et ardoise satinée (`#1E293B`) avec bordures capillaires 1px (`rgba(255,255,255,0.08)`).
-  - **10% Accents signature** : Rouge Bordeaux Grand Cru (`#881337` / `#9F1239`) pour les actions primaires, Or ambré millésimé (`#D97706` / `#F59E0B`) pour les alertes de stock bas et sélections actives.
-- **Typographie** :
-  - Titres & Domaines : `Plus Jakarta Sans` ou `Outfit` (élégant, moderne, contemporain).
-  - Corps de texte : `DM Sans` (haute lisibilité à petite taille sur écran tactile).
-  - Valeurs comptables, stocks et CUMP : `JetBrains Mono` avec `font-variant-numeric: tabular-nums` pour un alignement vertical strict des décimales et des quantités.
-- **Adieu aux modales intrusives (`alert`, `confirm`, `WineModal`)** :
-  - Remplacement de toutes les fenêtres pop-up bloquantes par des **tiroirs latéraux (Slide-overs)** coulissant depuis la droite, permettant de garder un œil sur le tableau d'inventaire ou la facture en cours d'édition.
-  - Remplacement des `window.confirm` par des toasts non-bloquants avec action d'annulation (« Annuler l'archivage »).
+### Cause 3 : Dépendance au CDN Tailwind à la volée dans `index.html`
+Le fichier `index.html` utilise :
+```html
+<script src="https://cdn.tailwindcss.com"></script>
+```
+Le script CDN analyse le DOM à la volée lors de chaque chargement dans le navigateur. De plus, une balise `<link rel="stylesheet" href="/index.css">` pointe vers un fichier inexistant. Selon la vitesse de résolution du CDN ou l'ordre d'injection des classes, le rendu visuel peut présenter des sautes ou des différences de style notables entre deux reconnexions.
 
-### Parcours utilisateur clés
-1. **Au Chai (Smartphone / Tablette)** :
-   - Mode « Inventaire Rapide » plein écran avec recherche floue instantanée.
-   - Boutons larges de pointage `[ -1 ]` `[ +1 ]` `[ +6 (Carton) ]` `[ +12 ]`.
-   - Rapprochement automatique des BL / Factures fournisseurs via l'IA Gemini déjà présente.
-2. **Au Comptoir (Ordinateur / Caisse)** :
-   - Navigation clavier ultra-rapide (`Cmd+K` / `Ctrl+K` pour chercher un vin ou un client en 2 frappes).
-   - Panier de vente fluide avec calcul automatique de la marge nette en direct selon le CUMP.
-   - Émission du ticket / facture PDF en un clic.
+### Cause 4 : Persistance du cache de compilation Vite (`.vite` & mémoire locale)
+Le serveur de développement Vite tourne en continu avec `tsx server.ts`. Les modules compilés en cache dans `node_modules/.vite` conservent parfois des fragments de styles précédents jusqu'à ce qu'un redémarrage propre et un nettoyage soient effectués.
 
 ---
 
-## 3. Stratégie Technique de Migration : Garantie ZÉRO Perte
+## 2. Plan d'Action pour Figer Définitivement le Bon Design
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   ÉTAPE 1 : SNAPSHOT FROID (Local)                     │
-│  Script d'extraction automatique Supabase -> Dumps JSON horodatés     │
-│  • wines.json (677)           • domains.json (203)                     │
-│  • invoices.json (211)        • clients.json (48)                      │
-│  • stock_movements.json (6416)• expenses.json (268)                    │
+│               ÉTAPE 1 : AUDIT VISUEL DES COMPOSANTS (Fait)             │
+│  • Vérification Sidebar.tsx (bandeau slate-900, bordeaux, blanc)       │
+│  • Vérification App.tsx (fond gray-50, structure classique)            │
+│  • Vérification Dashboard.tsx (cartes blanches, contrastes clairs)     │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                 ÉTAPE 2 : PROVISIONING FIREBASE VIA AI STUDIO          │
-│  • show_aistudio_ui(firebase_setup) -> Validation utilisateur UI       │
-│  • rpc_action(fax, ProvisionFirebase) -> Instance Firestore Cloud      │
-│  • Déploiement firestore.rules et initialisation SDK Firebase v11      │
+│            ÉTAPE 2 : NETTOYAGE DES INSTRUCTIONS ET DU SCOPE            │
+│  • Neutralisation formelle des consignes parasites d'un autre projet   │
+│  • Inscription explicite dans le référentiel du thème officiel         │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│               ÉTAPE 3 : INJECTION & RÉCONCILIATION ID-A-ID             │
-│  • Script de migration batch vers Firestore                            │
-│  • Conservation stricte des IDs originaux (garantie intégrité liens)   │
-│  • Parsing natif des JSON imbriqués (lignes de factures, stock client) │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                ÉTAPE 4 : BASCULE INDOLORE DE LA COUCHE API             │
-│  • Réécriture du Repository api.ts vers Firestore SDK                  │
-│  • Zéro modification de signature : useWines, usePurchases, etc.       │
-│  • Mise en place du cache IndexedDB offline natif Firestore            │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                ÉTAPE 5 : AUDIT & CERTIFICATION DE CONFORMITÉ           │
-│  • Contrôle volumétrique (677 = 677, 6416 = 6416)                      │
-│  • Recalcul de contrôle CUMP sur 5 vins complexes                      │
-│  • Rapprochement balance DRM mensuelle (Entrées / Sorties / Solde)     │
+│        ÉTAPE 3 : SÉCURISATION DU BUNDLE ET SUPPRESSION DES 404         │
+│  • Retrait de l'appel /index.css orphelin dans index.html               │
+│  • Stabilisation des classes Tailwind de la barre latérale et du header │
+│  • Compilation de vérification et redémarrage propre du serveur dev    │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 4. Architecture des Données & Schéma Firestore
-
-Les collections Firestore adopteront la structure normalisée suivante :
-
-| Collection Firestore | Rôle & Cardinalité | Clé Document (`id`) | Particularité & Traitement |
-| :--- | :--- | :--- | :--- |
-| `wines` | 677 cuvées actives/archivées | ID Supabase d'origine | Stock, CUMP `buyingPriceHT`, millésime, format, région |
-| `domains` | 203 producteurs viticoles | ID Supabase d'origine | Nom, région, coefficient multiplicateur par défaut |
-| `clients` | 48 comptes clients & CHR | ID Supabase d'origine | Stock déporté converti en sous-tableau d'objets typés |
-| `invoices` | 211 factures & devis | ID Supabase (ou numéro FA) | `items` convertis en Maps natives (plus de `JSON.parse`) |
-| `stock_movements` | 6 416 entrées/sorties | ID Supabase d'origine | Dates ISO, prix d'achat, TVA, ventilation transport |
-| `expenses` | 268 dépenses d'exploitation | ID Supabase d'origine | Fournisseurs, montants HT/TVA/TTC, catégorie |
-| `expense_categories` | 27 catégories comptables | ID Supabase d'origine | Libellés officiels de dépenses |
-| `assets` | 10 immobilisations | ID Supabase d'origine | Amortissements, durées, montants |
-
----
-
-## 5. Plan d'Exécution Détaillé
-
-### Phase 1 : Migration Backend & Données (Iso-fonctionnalités, 100% Automatisé)
-1. **Sauvegarde complète** : Exécution d'un script Node.js dédié `scripts/backup-supabase.ts` extrayant l'ensemble des tables en fichiers `.json` sécurisés avec checksums.
-2. **Provisionnement Firebase** : Déclenchement du flux UI officiel de setup Firebase, génération du `firebase-blueprint.json` et de `firestore.rules` étanches.
-3. **Migration en lots (Batch Writes)** : Injection par paquets de 500 documents (limite Firestore) avec journalisation pas-à-pas.
-4. **Adapter Firestore dans `api.ts`** :
-   - Remplacement de `@supabase/supabase-js` par `firebase/firestore`.
-   - Activation de la persistance locale (`persistentMultipleTabManager`) pour un usage hors-ligne fluide au chai sans connexion Internet.
-5. **Script de vérification croisée** : Comparaison automatisée ligne à ligne entre Supabase et Firestore.
-
-### Phase 2 : Refonte Ergonomique & Découpage Moderne (Inspiré de « premnord »)
-1. **Éclatement du God Hook `hooks.ts` (1 575 lignes)** :
-   - Découpage en micro-hooks spécialisés : `useWineInventory`, `usePointOfSale`, `useDrmReport`, `usePurchaseReception`.
-2. **Système de Tiroirs Latéraux (Slide-overs)** :
-   - Remplacement des 8 modales encombrantes par des panneaux rétractables animés (édition rapide de vin, fiche client, encaissement).
-3. **Interface de Pointage Tactile pour le Chai** :
-   - Vue optimisée pour smartphone avec grands boutons de comptage et scanner de référence.
-4. **Command Palette (`Cmd+K`)** :
-   - Recherche globale instantanée dans toute la cave depuis n'importe quel écran.
-5. **Thème Sombre Exécutif Bordeaux & Ardoise** :
-   - Application rigoureuse de la charte visuelle, typographies tabulaires et zéro élément parasite.
+### Détail des actions à engager (sur validation uniquement) :
+1. **Nettoyage de `index.html`** : Supprimer la ligne `<link rel="stylesheet" href="/index.css">` qui génère une erreur 404 au chargement et perturbe le rendu initial.
+2. **Sanctuarisation de la charte dans `Sidebar.tsx` et `App.tsx`** :
+   - Bandeau latéral : Fond ardoise foncé (`bg-slate-900`), délimitation nette (`border-slate-800`).
+   - Éléments actifs : Fond bordeaux grand cru (`bg-red-900`), texte blanc éclatant (`text-white`), ombre subtile (`shadow-red-950/20`).
+   - Éléments inactifs : Texte ardoise clair (`text-slate-400`), survol ardoise (`hover:bg-slate-800 hover:text-white`).
+   - En-tête mobile et fond général : Fond clair reposant (`bg-gray-50` / `bg-white`).
+3. **Mise à jour des métadonnées du projet** pour que toute future invite respecte ce design sans jamais réintroduire le dark mode exécutif.

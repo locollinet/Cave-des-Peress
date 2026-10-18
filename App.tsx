@@ -152,13 +152,16 @@ function App() {
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Mobile Header */}
-      <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+      {/* Mobile Header - Bandeau sombre cohérent */}
+      <div className="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm text-white">
         <div className="flex items-center gap-3">
-          <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-600 hover:text-gray-900 focus:outline-none">
-            <Menu size={24} />
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-300 hover:text-white focus:outline-none p-1 rounded-md hover:bg-slate-800 transition-colors">
+            <Menu size={22} />
           </button>
-          <span className="font-bold text-gray-800 truncate">Cave des Peress</span>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-700 shadow-sm shadow-red-500/50"></span>
+            <span className="font-bold text-white truncate text-base tracking-tight">La Cave des Pères</span>
+          </div>
         </div>
       </div>
 
