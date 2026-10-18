@@ -1,0 +1,1423 @@
+[
+  {
+    "id": "d_ardoisieres",
+    "name": "Ardoisières",
+    "region": "Savoie",
+    "coefficient": 1.35,
+    "is_archived": false
+  },
+  {
+    "id": "d_bergerie",
+    "name": "Bergerie de l’arcade",
+    "region": "Languedoc",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_bertagna",
+    "name": "Bertagna",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_billecart",
+    "name": "Billecart Salmon",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_bret",
+    "name": "Bret Brothers",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_carillon_f",
+    "name": "Carillon François",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_carillon_j",
+    "name": "Carillon Jacques",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_champs_themis",
+    "name": "Champs de Thémis",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_changarnier",
+    "name": "Changarnier",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_chartreuse",
+    "name": "Chartreuse",
+    "region": "Spiritueux",
+    "coefficient": 1.3,
+    "is_archived": false
+  },
+  {
+    "id": "d_charvin",
+    "name": "Charvin",
+    "region": "Rhône",
+    "coefficient": 1.4,
+    "is_archived": false
+  },
+  {
+    "id": "d_chevrot",
+    "name": "Chevrot",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_cheze",
+    "name": "Chèze",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_clape",
+    "name": "Clape",
+    "region": "Rhône",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_clos_marie",
+    "name": "Clos Marie",
+    "region": "Languedoc",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_clos_rougeard",
+    "name": "Clos Rougeard",
+    "region": "Loire",
+    "coefficient": 2,
+    "is_archived": false
+  },
+  {
+    "id": "d_clusel",
+    "name": "Clusel Roch",
+    "region": "Rhône",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_coffinet",
+    "name": "Coffinet Duvernay",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_combier",
+    "name": "Combier",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_comte_armand",
+    "name": "Comte Armand",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_comte_senard",
+    "name": "Comte Senard",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_creisses",
+    "name": "Creisses",
+    "region": "Languedoc",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_croix",
+    "name": "Croix",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_da_ros",
+    "name": "Da Ros",
+    "region": "Sud-Ouest",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_daumas",
+    "name": "Daumas Gassac",
+    "region": "Languedoc",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_dehours",
+    "name": "Dehours",
+    "region": "Champagne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_dom_perignon",
+    "name": "Dom Pérignon",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_duclaux",
+    "name": "Duclaux",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_egly",
+    "name": "Egly Ouriet",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_fondreche",
+    "name": "Fondrèche",
+    "region": "Rhône",
+    "coefficient": 1.4,
+    "is_archived": false
+  },
+  {
+    "id": "d_font",
+    "name": "Font",
+    "region": "Jus de fruits",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_fontchene",
+    "name": "Fontchene",
+    "region": "Provence",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_goisot",
+    "name": "Goisot",
+    "region": "Bourgogne",
+    "coefficient": 1.4,
+    "is_archived": false
+  },
+  {
+    "id": "d_graillot",
+    "name": "Graillot",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_grange_peres",
+    "name": "Grange des Pères",
+    "region": "Languedoc",
+    "coefficient": 2,
+    "is_archived": false
+  },
+  {
+    "id": "d_grange_tiphaine",
+    "name": "Grange Tiphaine",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_gros_tollot",
+    "name": "Gros - Tollot",
+    "region": "Languedoc",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_guiberteau",
+    "name": "Guiberteau",
+    "region": "Loire",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_devillard",
+    "name": "Devillard",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_gras",
+    "name": "Gras Alain",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_alambic",
+    "name": "Alambic bourguignon",
+    "region": "Spiritueux",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_beaune",
+    "name": "Beauné Aline",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_barret",
+    "name": "Barret Matthieu",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_berlioz",
+    "name": "Berlioz Gilles",
+    "region": "Savoie",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_gros_a",
+    "name": "Gros Anne",
+    "region": "Bourgogne",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_gripa",
+    "name": "Gripa Bernard",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_cotton",
+    "name": "Cotton Pierre",
+    "region": "Beaujolais",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_bouley",
+    "name": "Bouley Jean-Marc",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_bouzereau",
+    "name": "Bouzereau Michel",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_breton",
+    "name": "Breton Catherine et Pierre",
+    "region": "Loire",
+    "coefficient": 1.4,
+    "is_archived": false
+  },
+  {
+    "id": "d_chabanon",
+    "name": "Chabanon Alain",
+    "region": "Languedoc",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_clandestin",
+    "name": "Clandestin",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_chartron",
+    "name": "Chartron Jean-Michel",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_gombaude",
+    "name": "Château Gombaude-Guillot",
+    "region": "Bordeaux",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_chamilly",
+    "name": "Château de Chamilly",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_chave",
+    "name": "Chave Jean-Louis",
+    "region": "Rhône",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_chidaine",
+    "name": "Chidaine François",
+    "region": "Loire",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_delienne",
+    "name": "Delienne Marc",
+    "region": "Beaujolais",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_descombes",
+    "name": "Descombes Kevin",
+    "region": "Beaujolais",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_dagueneau",
+    "name": "Dagueneau Didier",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_bott",
+    "name": "Bott Graeme et Julie",
+    "region": "Rhône",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_alzipratu",
+    "name": "Alzipratu",
+    "region": "Corse",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_delaporte",
+    "name": "Delaporte Matthieu",
+    "region": "Loire",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_arlot",
+    "name": "Arlot",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_butte",
+    "name": "Butte",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_folie",
+    "name": "Folie",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_duband",
+    "name": "Duband David",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_dubuet",
+    "name": "Dubuet-Boillot Maxime",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_dureuil",
+    "name": "Dureuil-Janthial Vincent",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_guerin",
+    "name": "Guérin Elisa",
+    "region": "Beaujolais",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_farrugia",
+    "name": "Farrugia Sandrine",
+    "region": "Sud-Ouest",
+    "coefficient": 1.4,
+    "is_archived": false
+  },
+  {
+    "id": "d_bedel",
+    "name": "Bedel Françoise",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_ganevat",
+    "name": "Ganevat",
+    "region": "Jura",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_garrey",
+    "name": "Garrey Philippe",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_gautheron",
+    "name": "Gautheron Bastien",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_giboulot",
+    "name": "Giboulot Emmanuel",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_cartron",
+    "name": "Cartron Joseph",
+    "region": "Spiritueux",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_colin_j",
+    "name": "Colin Joseph",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_barroche",
+    "name": "Barroche",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_cognard",
+    "name": "Cognard Laurent",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_barral",
+    "name": "Barral Léon",
+    "region": "Languedoc",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_aurelles",
+    "name": "Aurelles",
+    "region": "Languedoc",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_baudoin",
+    "name": "Baudoin Patrick",
+    "region": "Loire",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_boisson",
+    "name": "Boisson Anne et Pierre",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_corcia",
+    "name": "Corcia Raphaël",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_bize",
+    "name": "Bize Simon",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_colin_s",
+    "name": "Colin Simon",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_aladame",
+    "name": "Aladame Stéphane",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_dancer_t",
+    "name": "Dancer",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_boudignon",
+    "name": "Boudignon Thibaud ",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_camps",
+    "name": "Camp Del Mas",
+    "region": "Languedoc",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_gangloff",
+    "name": "Gangloff",
+    "region": "Rhône",
+    "coefficient": 2,
+    "is_archived": false
+  },
+  {
+    "id": "d_hauvette",
+    "name": "Hauvette",
+    "region": "Provence",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_hure",
+    "name": "Huré Frères",
+    "region": "Champagne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_jacquesson",
+    "name": "Jacquesson Champagne",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_lapalu",
+    "name": "Lapalu",
+    "region": "Beaujolais",
+    "coefficient": 1.3,
+    "is_archived": false
+  },
+  {
+    "id": "d_livera",
+    "name": "Livera",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_maison_romane",
+    "name": "Maison Romane",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_malandes",
+    "name": "Malandes",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_mas_amiel",
+    "name": "Mas Amiel",
+    "region": "Roussillon",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_mas_libian",
+    "name": "Mas de Libian",
+    "region": "Rhône",
+    "coefficient": 1.4,
+    "is_archived": false
+  },
+  {
+    "id": "d_matrot",
+    "name": "Matrot",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_meo",
+    "name": "Méo Camuzet",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_metras",
+    "name": "Métras",
+    "region": "Beaujolais",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_mitjaville",
+    "name": "Mitjaville",
+    "region": "Bordeaux",
+    "coefficient": 1.35,
+    "is_archived": false
+  },
+  {
+    "id": "d_monardiere",
+    "name": "Monardière",
+    "region": "Rhône",
+    "coefficient": 1.4,
+    "is_archived": false
+  },
+  {
+    "id": "d_montcalmes",
+    "name": "Montcalmes",
+    "region": "Languedoc",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_moreau_naudet",
+    "name": "Moreau-Naudet",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_mortet_a",
+    "name": "Mortet Arnaud",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_mortet_t",
+    "name": "Mortet Thierry",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_pas_escalette",
+    "name": "Pas de l’Escalette",
+    "region": "Languedoc",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_pattes_loup",
+    "name": "Pattes Loup",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_pothiers",
+    "name": "Pothiers",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_quatre",
+    "name": "Quatre Piliers",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_rectorie",
+    "name": "Rectorie",
+    "region": "Roussillon",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_renardiere",
+    "name": "Renardière",
+    "region": "Jura",
+    "coefficient": 1.3,
+    "is_archived": false
+  },
+  {
+    "id": "d_rijckaert",
+    "name": "Rijckaert",
+    "region": "Jura",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_roederer",
+    "name": "Roederer",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_drc",
+    "name": "Romanée Conti",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_ruinart",
+    "name": "Ruinart",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_saint_joseph",
+    "name": "Saint Joseph",
+    "region": "Spiritueux",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_saisons",
+    "name": "Vins Saisons",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_saladin",
+    "name": "Saladin",
+    "region": "Rhône",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_santa_duc",
+    "name": "Santa Duc",
+    "region": "Rhône",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_signadore",
+    "name": "Signadore",
+    "region": "Corse",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_soeur",
+    "name": "Sœur cadette",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_taille",
+    "name": "Taille aux Loups",
+    "region": "Loire",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_tempier",
+    "name": "Tempier",
+    "region": "Provence",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_tollot",
+    "name": "Tollot-Beaut",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_trapet",
+    "name": "Trapet",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_trevallon",
+    "name": "Trévallon",
+    "region": "Provence",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_trimbach",
+    "name": "Trimbach",
+    "region": "Alsace",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_vacheron",
+    "name": "Vacheron",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_verzier",
+    "name": "Verzier",
+    "region": "Rhône",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_villaine",
+    "name": "de Villaine",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_villard",
+    "name": "Villard",
+    "region": "Rhône",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_vougeraie",
+    "name": "Vougeraie",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_zeroine",
+    "name": "Zéroine",
+    "region": "Jura",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1768053809391",
+    "name": "Château Le Puy",
+    "region": "Bordeaux",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_leroux",
+    "name": "Leroux Benjamin",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_lorenzon",
+    "name": "Lorenzon Bruno",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_buison",
+    "name": "Buisson Henri et Gilles",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_le_devay",
+    "name": "Château Le Devay",
+    "region": "Rhône",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_rontets",
+    "name": "Château des Rontets",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_messey",
+    "name": "Château de Messey",
+    "region": "Bourgogne",
+    "coefficient": 1.3,
+    "is_archived": false
+  },
+  {
+    "id": "d_pacalet",
+    "name": "Pacalet Christophe",
+    "region": "Beaujolais",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_naudin",
+    "name": "Naudin Claire",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_roches",
+    "name": "Roches Neuves",
+    "region": "Loire",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_larue",
+    "name": "Larue",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_michelot",
+    "name": "Michelot",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_roulot",
+    "name": "Roulot Jean-Marc",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_lienhardt",
+    "name": "Lienhardt Antoine",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_lucas",
+    "name": "Paradis",
+    "region": "Savoie",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_reynaud",
+    "name": "Reynaud",
+    "region": "Rhône",
+    "coefficient": 2,
+    "is_archived": false
+  },
+  {
+    "id": "d_bordelet",
+    "name": "Bordelet Eric",
+    "region": "Spiritueux",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_sabre",
+    "name": "Sabre Fanny",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_1768053553023",
+    "name": "Foillard Jean",
+    "region": "Beaujolais",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_lumpp",
+    "name": "Lumpp François",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_mikulski",
+    "name": "Mikulski François",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_nudant",
+    "name": "Nudant Guillaume",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_jacqueson",
+    "name": "Jacqueson Pierre et Marie",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_ponsot",
+    "name": "Ponsot Jean-Baptiste",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_pillot",
+    "name": "Pillot Jean-Marc",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_seleque",
+    "name": "Sélèque JM",
+    "region": "Champagne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_vincent",
+    "name": "Vincent Jean-Marc",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_pilon",
+    "name": "Pilon Julien",
+    "region": "Rhône",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_landron",
+    "name": "Landron",
+    "region": "Loire",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_muzard",
+    "name": "Muzard Lucien",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_roy",
+    "name": "Roy Marc",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_lapierre",
+    "name": "Lapierre Marcel",
+    "region": "Beaujolais",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_renaudin",
+    "name": "Renaudin Maxime",
+    "region": "Languedoc",
+    "coefficient": 1.8,
+    "is_archived": false
+  },
+  {
+    "id": "d_redde",
+    "name": "Redde Michel",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_ragot",
+    "name": "Ragot Nicolas",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_leflaive",
+    "name": "Leflaive Olivier",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_mouton",
+    "name": "Mouton Laurent",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_pernot",
+    "name": "Pernot-Belicard Philippe",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_rougeot",
+    "name": "Rougeot Pierre-Henri",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_quenard",
+    "name": "Quénard Jean-François",
+    "region": "Savoie",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_paillard",
+    "name": "Paillard Pierre",
+    "region": "Champagne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_guyot",
+    "name": "Guyot Raphaelle",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_richaud",
+    "name": "Richaud Marcel",
+    "region": "Rhône",
+    "coefficient": 1.3,
+    "is_archived": false
+  },
+  {
+    "id": "d_robert",
+    "name": "Robert-Denogent",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_santini",
+    "name": "Santini",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_saumaize",
+    "name": "Saumaize-Michelin",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_sauzet",
+    "name": "Sauzet Etienne",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_verveine",
+    "name": "Verveine du Forez",
+    "region": "Spiritueux",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_latour",
+    "name": "Latour Vincent ",
+    "region": "Bourgogne",
+    "coefficient": 1.25,
+    "is_archived": false
+  },
+  {
+    "id": "d_pinard",
+    "name": "Pinard Vincent ",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_montille",
+    "name": "de Montille",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1768055841803",
+    "name": "de Suremain",
+    "region": "Bourgogne",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_moreau_a",
+    "name": "Moreau Alex",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1768055741501",
+    "name": "Fournier Jean",
+    "region": "Bourgogne",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_1768055331200",
+    "name": "Pertuzot Romain",
+    "region": "Bourgogne",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_1768519638983",
+    "name": "Comte Laurisson",
+    "region": "Normandie",
+    "coefficient": 1.5,
+    "is_archived": false
+  },
+  {
+    "id": "d_1773164528318",
+    "name": "Paquet Agnès",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1773507862599",
+    "name": "Chaland Jean-Marc",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1776171233507",
+    "name": "Huilerie Leblanc",
+    "region": "Autres",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1777557080168",
+    "name": "Vedett",
+    "region": "Belgique",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1779807109579",
+    "name": "Brasserie Cantillon",
+    "region": "Belgique",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1780320865933",
+    "name": "Lavantureux Roland",
+    "region": "Bourgogne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1781024693724",
+    "name": "Ruinart",
+    "region": "Champagne",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1783164111764",
+    "name": "Chai de La Dive (Guiberteau)",
+    "region": "Loire",
+    "coefficient": 1.2,
+    "is_archived": false
+  },
+  {
+    "id": "d_1785661017700",
+    "name": "Hysope",
+    "region": "",
+    "coefficient": 1.5,
+    "is_archived": false
+  }
+]

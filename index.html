@@ -3,31 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VinoManager Pro</title>
+    <title>La Cave des Pères — Gestion Caviste & Négoce</title>
+    <meta name="description" content="Outil de gestion caviste haut de gamme pour La Cave des Pères. Inventaire des cuvées, calcul du CUMP, caisse et facturation." />
+    <link rel="stylesheet" href="/index.css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f3f4f6;
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ivory: {
+                50: '#FDFBF7',
+                100: '#FAF7F2',
+                200: '#F4EFEA',
+                300: '#EAE3D9',
+                400: '#DDD4C7',
+              },
+              bordeaux: {
+                50: '#FDF2F4',
+                100: '#FBE8EB',
+                200: '#F5CBD1',
+                300: '#ECA0AC',
+                400: '#DF697B',
+                500: '#C7384E',
+                600: '#A9243A',
+                700: '#8A192D',
+                800: '#722F37',
+                900: '#541E24',
+                950: '#380F13',
+              },
+              lin: {
+                100: '#F8F5EE',
+                200: '#EFEAE0',
+                300: '#E7E1D5',
+                400: '#D5CDC0',
+                500: '#BDB3A4',
+              },
+              champagne: {
+                100: '#FBF5E6',
+                200: '#F4E7C4',
+                300: '#E7D195',
+                400: '#D4AF37',
+                500: '#C5A059',
+                600: '#A5823D',
+              }
+            },
+            fontFamily: {
+              serif: ['Fraunces', 'Georgia', 'serif'],
+              sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            }
+          }
+        }
       }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
-  <body>
+    </script>
+  </head>
+  <body class="bg-ivory-100 text-slate-800 antialiased selection:bg-bordeaux-100 selection:text-bordeaux-900">
     <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>

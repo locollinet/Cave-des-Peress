@@ -1,0 +1,2085 @@
+[
+  {
+    "id": "cli_1765841603480",
+    "name": "Peresson Aurelio",
+    "contact_name": "Aurelio PERESSON",
+    "email": "aurelio.peresson@icloud.com",
+    "phone": "0610847902",
+    "address": "3 Rue du monument\n21190 Puligny-Montrachet",
+    "external_stock": [
+      {
+        "wineId": "w_1777887928905",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1777888061415",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1777990913505",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_arlot_6",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768166168084",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_taille_4",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768230832251",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1770992733223",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1772829345312",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1774029768788",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_roches_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_monardiere_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_saladin_1",
+        "quantity": 0
+      }
+    ],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_clariant",
+    "name": "Le Clariant",
+    "contact_name": "Florian",
+    "email": "bonjour@leclariant.com",
+    "phone": "06 28 53 55 57",
+    "address": "Les Martins\n38250 Corrençon en Vercors",
+    "external_stock": [],
+    "phone_landline": null
+  },
+  {
+    "id": "cli_1765838651880",
+    "name": "L'évidence",
+    "contact_name": "Stéphane CHAMPIN",
+    "email": "s.champin@restaurant-levidence.fr",
+    "phone": "06 58 46 03 71",
+    "address": "14 Rue Nationale\n71160 Digoin",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_idealwine",
+    "name": "iDealWine",
+    "contact_name": "Raphaël DE FONSCOLOMBE",
+    "email": "r.defonscolombe@idealwine.com",
+    "phone": "06 74 16 57 72‬",
+    "address": "190 Rue d'Estienne d'Orves\n92700 Colombes",
+    "external_stock": [
+      {
+        "wineId": "w_pinard_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768309820993",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_saladin_2",
+        "quantity": 0
+      }
+    ],
+    "phone_landline": "01 56 05 83 44‬"
+  },
+  {
+    "id": "cli_slanted",
+    "name": "Slanted Door",
+    "contact_name": "Charles Phan",
+    "email": "info@slanteddoor.com",
+    "phone": null,
+    "address": "One Ferry Building, San Francisco, CA 94111, USA",
+    "external_stock": [],
+    "phone_landline": null
+  },
+  {
+    "id": "cli_armand",
+    "name": "Chez Armand",
+    "contact_name": "Jérémy",
+    "email": "restaurant@armandheitz.com",
+    "phone": "06 62 76 21 30",
+    "address": "Chateau de Mimande\n71150 Chaudenay",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_leflaive",
+    "name": "Olivier Leflaive",
+    "contact_name": "Olivier LEFLAIVE",
+    "email": "contact@olivier-leflaive.com",
+    "phone": "",
+    "address": "Place du Monument, 21190 Puligny-Montrachet",
+    "external_stock": [],
+    "phone_landline": "03 80 21 37 65"
+  },
+  {
+    "id": "cli_ogre",
+    "name": "L’Ogre",
+    "contact_name": "Maurice BITSCH",
+    "email": "becmomo@yahoo.fr",
+    "phone": "06 20 60 00 89",
+    "address": "1 Avenue de Versailles, 75016 Paris",
+    "external_stock": [],
+    "phone_landline": "01 39 58 91 07"
+  },
+  {
+    "id": "cli_lune",
+    "name": "La Lune",
+    "contact_name": "Seiichi SAÏTO",
+    "email": "contact@lalune-beaune.com",
+    "phone": "06 73 71 65 66",
+    "address": "32 Rue Maufoux, 21200 Beaune",
+    "external_stock": [],
+    "phone_landline": "03 80 20 77 42"
+  },
+  {
+    "id": "cli_1775038341097",
+    "name": "Gallot Vincent",
+    "contact_name": "Vincent GALLOT",
+    "email": "vincentgallot@free.fr",
+    "phone": "0683857420",
+    "address": "12 Avenue Guy Moquet\n94340 Joinville Le Pont",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_grimpette",
+    "name": "La Grimpette",
+    "contact_name": "Sophie METY",
+    "email": "sophiemety@orange.fr",
+    "phone": "06 77 01 98 27",
+    "address": "38 Rue Jules Guesde\n71200 Le Creusot",
+    "external_stock": [
+      {
+        "wineId": "w_changarnier_3",
+        "quantity": 3,
+        "sellingPriceHT": 31
+      },
+      {
+        "wineId": "w_coffinet_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768055331200",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_1768055386355",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_1768056955931",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_combier_2",
+        "quantity": 5,
+        "sellingPriceHT": 14
+      },
+      {
+        "wineId": "w_livera_5",
+        "quantity": 3,
+        "sellingPriceHT": 42
+      },
+      {
+        "wineId": "w_1768055644906",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768055741501",
+        "quantity": 3,
+        "sellingPriceHT": 26
+      },
+      {
+        "wineId": "w_1768055841803",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1775641416648",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_latour_1",
+        "quantity": 1,
+        "sellingPriceHT": 24
+      },
+      {
+        "wineId": "w_cognard_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_changarnier_2",
+        "quantity": 3,
+        "sellingPriceHT": 23
+      },
+      {
+        "wineId": "w_changarnier_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1773649800085",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768056324632",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1770721378145",
+        "quantity": 7,
+        "sellingPriceHT": 28
+      },
+      {
+        "wineId": "w_gras_3",
+        "quantity": 7,
+        "sellingPriceHT": 23
+      },
+      {
+        "wineId": "w_gras_1",
+        "quantity": 5,
+        "sellingPriceHT": 23
+      },
+      {
+        "wineId": "w_delaporte_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_muzard_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_pas_escalette_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1768056648704",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_monardiere_1",
+        "quantity": 1,
+        "sellingPriceHT": 13
+      },
+      {
+        "wineId": "w_pilon_1",
+        "quantity": 2,
+        "sellingPriceHT": 13
+      }
+    ],
+    "phone_landline": "03 85 80 42 00"
+  },
+  {
+    "id": "cli_1774282909971",
+    "name": "iDealWine",
+    "contact_name": "Luca CHARLOT",
+    "email": "l.charlot@idealwine.com",
+    "phone": "06 76 45 42 14",
+    "address": "190 Rue d'Estienne d'Orves\n92700 Colombes\nFrance",
+    "external_stock": [],
+    "phone_landline": "01 84 20 82 35"
+  },
+  {
+    "id": "cli_1766390676226",
+    "name": "Chez Armand",
+    "contact_name": "Thomas",
+    "email": "thomas@armandheitz.com",
+    "phone": "06 65 65 74 26",
+    "address": "Chateau de Mimande\n71150 Chaudenay",
+    "external_stock": [
+      {
+        "wineId": "w_1768057800460",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768057947363",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768057865424",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768058217950",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_goisot_1",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1768058333255",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768058383578",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1777887928905",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_livera_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_soeur_1",
+        "quantity": 7
+      },
+      {
+        "wineId": "w_1768058982356",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_villaine_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768059127507",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_alzipratu_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768059197995",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1768059259955",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_clandestin_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_clandestin_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_dehours_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_jacquesson_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_hure_1",
+        "quantity": 7,
+        "sellingPriceHT": 26
+      },
+      {
+        "wineId": "w_1768151574823",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768151687598",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_bott_1",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_barret_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1775141059052",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1768152726930",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1768151829785",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_bott_6",
+        "quantity": 1,
+        "sellingPriceHT": 50
+      },
+      {
+        "wineId": "w_mitjaville_1",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1776939203910",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768151960739",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_mortet_t_2",
+        "quantity": 4,
+        "sellingPriceHT": 39
+      },
+      {
+        "wineId": "w_livera_5",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_lumpp_4",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_trevallon_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768152067372",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_chevrot_2",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_1768152250187",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768152361912",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_latour_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768152474573",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_taille_6",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_chidaine_3",
+        "quantity": 2,
+        "sellingPriceHT": 19
+      },
+      {
+        "wineId": "w_taille_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768152647937",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768152821175",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_clos_marie_3",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768152904162",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768152971970",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_trimbach_2",
+        "quantity": 4,
+        "sellingPriceHT": 49
+      },
+      {
+        "wineId": "w_trapet_4",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768153268685",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_villaine_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768153454443",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768153524481",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768153766700",
+        "quantity": 1,
+        "sellingPriceHT": 17
+      },
+      {
+        "wineId": "w_rougeot_8",
+        "quantity": 4,
+        "sellingPriceHT": 29
+      },
+      {
+        "wineId": "w_1768153871128",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_muzard_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_roches_2",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_clos_rougeard_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_goisot_2",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768154135085",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768154162983",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_pas_escalette_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768056648704",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768154461543",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768154543452",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768154614122",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768309287501",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_1768154309626",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1776939982085",
+        "quantity": 2,
+        "sellingPriceHT": 9
+      },
+      {
+        "wineId": "w_1768154678569",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768154691736",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768154803729",
+        "quantity": 2
+      }
+    ],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_ajaccio",
+    "name": "Centre Leclerc Baleone",
+    "contact_name": "Benoit LOCATELLI",
+    "email": "cave.uvinu@ajaccio-baleone.leclerc",
+    "phone": "04 95 51 46 61",
+    "address": "Centre commercial Grand Ajaccio Baleone\n20167 Baleone Sarrola Carcopino",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_neyret",
+    "name": "Neyret Greg",
+    "contact_name": "Greg NEYRET",
+    "email": "",
+    "phone": "",
+    "address": "14 Rue de la République, 69002 Lyon",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_evidence",
+    "name": "L'évidence",
+    "contact_name": "Nicolas MARTIN",
+    "email": "restaurant@restaurant-levidence.fr",
+    "phone": "06 33 60 53 13",
+    "address": "14 Rue Nationale\n71160 Digoin",
+    "external_stock": [
+      {
+        "wineId": "w_larue_4",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_buison_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_rougeot_6",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1777990913505",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768165412106",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768151687598",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_pillot_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768165689164",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_rectorie_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768151829785",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_mortet_t_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1772709762890",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_chevrot_2",
+        "quantity": 9
+      },
+      {
+        "wineId": "w_1768055741501",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_corcia_1",
+        "quantity": 8
+      },
+      {
+        "wineId": "w_michelot_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_rougeot_9",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_cognard_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_changarnier_2",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_changarnier_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_taille_6",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_bordelet_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_rougeot_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1772829345312",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768166987824",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_villaine_3",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1768056324632",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1768301620373",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_gras_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_gras_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_gras_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_delaporte_2",
+        "quantity": 7
+      },
+      {
+        "wineId": "w_delaporte_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_muzard_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_muzard_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1768167399347",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1773507912720",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768154691736",
+        "quantity": 0
+      }
+    ],
+    "phone_landline": "03 85 25 07 26"
+  },
+  {
+    "id": "cli_1779964924450",
+    "name": "Aurelio PERESSON",
+    "contact_name": null,
+    "email": null,
+    "phone": null,
+    "address": null,
+    "external_stock": [],
+    "phone_landline": null
+  },
+  {
+    "id": "cli_1768212695771",
+    "name": "Morvan",
+    "contact_name": "Jérôme RAYMOND",
+    "email": "reservation@hotelrestaurantdumorvan.fr",
+    "phone": "",
+    "address": "26, Rue de la République\n58170 Luzy",
+    "external_stock": [
+      {
+        "wineId": "w_sabre_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_villaine_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_da_ros_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_pillot_1",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_coffinet_5",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1776939786132",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1776939923970",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1776939166966",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1776938986998",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_mortet_t_3",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_mortet_t_6",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_lumpp_4",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_roulot_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_chevrot_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_chevrot_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_arlot_7",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_arlot_8",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1775140292188",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1776853099451",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1771436793013",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_1768056324632",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_1771437117114",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_arlot_4",
+        "quantity": 0
+      }
+    ],
+    "phone_landline": "03 86 30 00 66"
+  },
+  {
+    "id": "cli_1775647196321",
+    "name": "Richez Hervé",
+    "contact_name": "Hervé RICHEZ",
+    "email": "h.richez@bamboo.fr",
+    "phone": "06 84 45 48 03",
+    "address": "Bamboo Editions\n71850 Charnay les Mâcon",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1782662748550",
+    "name": "Premnord",
+    "contact_name": "Yannick CHAMP",
+    "email": "ychamp@hfroch.fr",
+    "phone": "0680172690",
+    "address": "Route Nationale\n21700 Prémeaux Prissey",
+    "external_stock": [
+      {
+        "wineId": "w_boudignon_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_changarnier_3",
+        "quantity": 6,
+        "sellingPriceHT": 30
+      },
+      {
+        "wineId": "w_1774536332609",
+        "quantity": 12,
+        "sellingPriceHT": 45
+      },
+      {
+        "wineId": "w_goisot_1",
+        "quantity": 8
+      },
+      {
+        "wineId": "w_1777887928905",
+        "quantity": 6,
+        "sellingPriceHT": 14
+      },
+      {
+        "wineId": "w_1776946771031",
+        "quantity": 12,
+        "sellingPriceHT": 14
+      },
+      {
+        "wineId": "w_1777888061415",
+        "quantity": 6,
+        "sellingPriceHT": 14
+      },
+      {
+        "wineId": "w_1770993222230",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_richaud_4",
+        "quantity": 6,
+        "sellingPriceHT": 19
+      },
+      {
+        "wineId": "w_1776852092684",
+        "quantity": 6,
+        "sellingPriceHT": 55
+      },
+      {
+        "wineId": "w_dehours_1",
+        "quantity": 6,
+        "sellingPriceHT": 33
+      },
+      {
+        "wineId": "w_hure_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_seleque_1",
+        "quantity": 6,
+        "sellingPriceHT": 27
+      },
+      {
+        "wineId": "w_paillard_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_dehours_2",
+        "quantity": 6,
+        "sellingPriceHT": 47
+      },
+      {
+        "wineId": "wine_1788815254959_yuz2zt",
+        "quantity": 6
+      },
+      {
+        "wineId": "wine_1788815254615_85t47x",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1768055331200",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1768055386355",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_barret_1",
+        "quantity": 6,
+        "sellingPriceHT": 52
+      },
+      {
+        "wineId": "w_croix_6",
+        "quantity": 6
+      },
+      {
+        "wineId": "wine_1788815255211_qcp7wg",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_graillot_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_trapet_2",
+        "quantity": 6,
+        "sellingPriceHT": 52
+      },
+      {
+        "wineId": "w_trapet_3",
+        "quantity": 6,
+        "sellingPriceHT": 110
+      },
+      {
+        "wineId": "w_santa_duc_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1768230887006",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1775140155500",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_chevrot_3",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_chevrot_2",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_michelot_1",
+        "quantity": 6,
+        "sellingPriceHT": 40
+      },
+      {
+        "wineId": "w_1777888010205",
+        "quantity": 12,
+        "sellingPriceHT": 45
+      },
+      {
+        "wineId": "w_1777888022053",
+        "quantity": 6,
+        "sellingPriceHT": 65
+      },
+      {
+        "wineId": "w_1776946740558",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_changarnier_2",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_taille_4",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1783163122548",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_lapierre_7",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1770992733223",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1775140220321",
+        "quantity": 12,
+        "sellingPriceHT": 73
+      },
+      {
+        "wineId": "w_1775140292188",
+        "quantity": 12,
+        "sellingPriceHT": 70
+      },
+      {
+        "wineId": "w_bordelet_2",
+        "quantity": 6,
+        "sellingPriceHT": 14
+      },
+      {
+        "wineId": "w_1777888089972",
+        "quantity": 12,
+        "sellingPriceHT": 42
+      },
+      {
+        "wineId": "w_robert_2",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_larue_1",
+        "quantity": 6,
+        "sellingPriceHT": 50
+      },
+      {
+        "wineId": "w_1770721378145",
+        "quantity": 6,
+        "sellingPriceHT": 27
+      },
+      {
+        "wineId": "w_1777887985697",
+        "quantity": 12,
+        "sellingPriceHT": 30
+      },
+      {
+        "wineId": "w_1772829413763",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_pinard_3",
+        "quantity": 12,
+        "sellingPriceHT": 31
+      },
+      {
+        "wineId": "w_roches_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_goisot_2",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1774536292133",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_bordelet_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_monardiere_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_saladin_1",
+        "quantity": 6,
+        "sellingPriceHT": 21
+      },
+      {
+        "wineId": "w_1773507912720",
+        "quantity": 6
+      }
+    ],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1779965015974",
+    "name": "Oger Antoine",
+    "contact_name": "Antoine OGER",
+    "email": "antoine.oger35@gmail.com",
+    "phone": "07 85 41 35 74",
+    "address": "21200 Beaune",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1768881587963",
+    "name": "Arrière Boutique",
+    "contact_name": "Bastien THIBODAUX",
+    "email": "arriereboutique.beaune@gmail.com",
+    "phone": "0687409672",
+    "address": "Place Carnot\n21200 Beaune",
+    "external_stock": [
+      {
+        "wineId": "w_renardiere_1",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1774536332609",
+        "quantity": 8
+      },
+      {
+        "wineId": "w_moreau_naudet_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_da_ros_2",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768881965966",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_gros_a_5",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1770916739149",
+        "quantity": 0,
+        "sellingPriceHT": 51
+      },
+      {
+        "wineId": "w_1768302320812",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_bott_3",
+        "quantity": 11
+      },
+      {
+        "wineId": "w_trapet_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_lumpp_3",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1773215686089",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1770993179158",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_chidaine_5",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_chidaine_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_taille_2",
+        "quantity": 12
+      },
+      {
+        "wineId": "w_chidaine_2",
+        "quantity": 1,
+        "sellingPriceHT": 27
+      },
+      {
+        "wineId": "w_taille_4",
+        "quantity": 6,
+        "sellingPriceHT": 22
+      },
+      {
+        "wineId": "w_lapierre_1",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_lapierre_5",
+        "quantity": 1,
+        "sellingPriceHT": 22
+      },
+      {
+        "wineId": "w_lapierre_6",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1770992733223",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_clos_marie_3",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_robert_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_verzier_1",
+        "quantity": 0,
+        "sellingPriceHT": 19
+      },
+      {
+        "wineId": "w_1783162959935",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1783162898385",
+        "quantity": 7
+      },
+      {
+        "wineId": "w_pas_escalette_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1783163849274",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_pas_escalette_2",
+        "quantity": 3
+      }
+    ],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1771701521710",
+    "name": "Louvenaz Pierrick",
+    "contact_name": "Pierrick LOUVENAZ",
+    "email": "pierrick.louvenaz@outlook.fr",
+    "phone": "0762186478",
+    "address": "21200 Beaune",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1774364438020",
+    "name": "Bouche-Pillon Jean-Eric",
+    "contact_name": "Jean-Eric BOUCHE-PILLON",
+    "email": "dr.je.bouche.pillon@gmail.com",
+    "phone": "0607603145",
+    "address": "Marseille",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1775566922657",
+    "name": "Rosolek Guillaume",
+    "contact_name": "Guillaume ROSOLEK",
+    "email": "guillaume.rosolek@gmail.com",
+    "phone": "0785602422",
+    "address": "19 Rue Louis Sébillon\n95130 Franconville",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1776259455735",
+    "name": "Du vin et des copains",
+    "contact_name": "Raphaël PUSSET",
+    "email": "raphael.pusset@gmail.com",
+    "phone": "+33 6 82 94 16 73",
+    "address": "Rue Tassigny\n21190 Meursault",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1768644617024",
+    "name": "Piffeteau Sébastien",
+    "contact_name": "Sébastien PIFFETEAU",
+    "email": "sebastien.piffteau@gmail.com",
+    "phone": "0619413673",
+    "address": "75000 Paris",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1768849466259",
+    "name": "Piccino Cédric",
+    "contact_name": "Cédric PICCINO",
+    "email": "cedric@akiprod.com",
+    "phone": "0767305001",
+    "address": "26220 Dieulefit",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1768939787469",
+    "name": "Centre Leclerc Montceau les Mines",
+    "contact_name": "Laurence PASSOT",
+    "email": "cave@montceau-les-mines.leclerc",
+    "phone": "",
+    "address": "Avenue du Maréchal Leclerc\n71300 Montceau les Mines",
+    "external_stock": [],
+    "phone_landline": "0385677070"
+  },
+  {
+    "id": "cli_1768426340193",
+    "name": "Loulou",
+    "contact_name": null,
+    "email": null,
+    "phone": null,
+    "address": null,
+    "external_stock": [],
+    "phone_landline": null
+  },
+  {
+    "id": "cli_1768644473491",
+    "name": "Llorente Samuel",
+    "contact_name": "Samuel LLORENTE",
+    "email": "",
+    "phone": "0661902230",
+    "address": "75000 Paris",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1768644557187",
+    "name": "Bilhaut Philippe",
+    "contact_name": "Philippe BILHAUT",
+    "email": "philippe.bilhaut@gmail.com",
+    "phone": "0677558100",
+    "address": "75000 Paris",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1768835305975",
+    "name": "Basso Boris",
+    "contact_name": "Boris BASSO",
+    "email": "alpine.elec73@gmail.com",
+    "phone": "0609358694",
+    "address": "895 Avenue des thermes\n73600 Salins Les Thermes",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1768155146451",
+    "name": "Auprès du clocher",
+    "contact_name": "Rémi GENOT",
+    "email": "aupresduclocher@orange.fr",
+    "phone": "06 33 64 83 44‬",
+    "address": "1 Rue de Nackenheim\n21190 Pommard",
+    "external_stock": [
+      {
+        "wineId": "w_baudoin_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768161560996",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768161629200",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768161660193",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768161773358",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768161836631",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_richaud_4",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768161966153",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_hure_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768164377987",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_livera_9",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768162181861",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768162280284",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_bott_6",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768162414415",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_graillot_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768162450488",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768162634594",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1768162582771",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768162687756",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_lorenzon_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_rougeot_10",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_changarnier_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768162813782",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_changarnier_1",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_taille_4",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768162895314",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768152647937",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_arlot_7",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_arlot_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768163008494",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_bordelet_2",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_rougeot_1",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_saumaize_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768159944920",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768160018822",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768163329167",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768163525065",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768160085350",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768056324632",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768160107557",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768163625132",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_pilon_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_gras_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768160464183",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768160410630",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_buison_3",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_saumaize_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768163728669",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768160590437",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_muzard_2",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_1768163924240",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768163828549",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1768160682108",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_roches_2",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768164035612",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_goisot_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_baudoin_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768164121431",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_bordelet_1",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768154135085",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1768164255433",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_pas_escalette_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768164304290",
+        "quantity": 1
+      }
+    ],
+    "phone_landline": "‭03 80 22 21 79‬"
+  },
+  {
+    "id": "cli_1768750503561",
+    "name": "Srecki Richard",
+    "contact_name": "Richard SRECKI",
+    "email": "richard.srecki@interieur.gouv.fr",
+    "phone": "06 11 72 30 84",
+    "address": "7 Grande Rue\n78790 Flins Neuve Eglise\n",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1774432988469",
+    "name": "Crespin Yves",
+    "contact_name": "Yves CRESPIN",
+    "email": "",
+    "phone": "",
+    "address": "France",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1767824268048",
+    "name": "PAPI",
+    "contact_name": "Valentin LANNEAU",
+    "email": "papi.chassagne@gmail.com",
+    "phone": " 07 86 88 99 72",
+    "address": "Place de l'Europe\n21190 Chassagne-Montrachet",
+    "external_stock": [
+      {
+        "wineId": "w_1774536267236",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1774536332609",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_1774536320483",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_croix_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_boisson_1",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768053650612",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_seleque_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_da_ros_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_reynaud_11",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_reynaud_12",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768053058420",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1770916739149",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_clape_1",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_mitjaville_1",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1773043946654",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1773044100389",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1773043876824",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_metras_3",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1779808799003",
+        "quantity": 8
+      },
+      {
+        "wineId": "w_1779808766417",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_camps_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_corcia_2",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_corcia_3",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_1773044581224",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1773044611544",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_taille_1",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_taille_3",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_chidaine_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_bordelet_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768213127651",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1776853143369",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_trimbach_1",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_trimbach_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1771437032293",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1771436815028",
+        "quantity": 6
+      },
+      {
+        "wineId": "w_1771436793013",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1771436783131",
+        "quantity": 9
+      },
+      {
+        "wineId": "w_1771437078945",
+        "quantity": 7
+      },
+      {
+        "wineId": "w_1768301580658",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1768301620373",
+        "quantity": 2
+      },
+      {
+        "wineId": "w_chave_1",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1779808916615",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_guiberteau_3",
+        "quantity": 4
+      },
+      {
+        "wineId": "w_1783162898385",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_guiberteau_6",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1783162940107",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_1783162921591",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_roches_2",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_clos_rougeard_2",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_bordelet_1",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1773043786947",
+        "quantity": 3
+      },
+      {
+        "wineId": "w_reynaud_3",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_reynaud_2",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_1773043747669",
+        "quantity": 1
+      },
+      {
+        "wineId": "w_1768053895668",
+        "quantity": 5
+      },
+      {
+        "wineId": "w_1768053809391",
+        "quantity": 0
+      },
+      {
+        "wineId": "w_saladin_1",
+        "quantity": 0
+      }
+    ],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1770397729585",
+    "name": "Chauvin Claire",
+    "contact_name": "Claire CHAUVIN",
+    "email": "cl.chauvin@hotmail.fr",
+    "phone": "0652739382",
+    "address": "Place du monument\n21190 Puligny-Montrachet",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1771439604670",
+    "name": "Le Louedec Frédéric",
+    "contact_name": "Frédéric LE LOUEDEC",
+    "email": "fredlelou@free.fr",
+    "phone": "+33 6 81 93 98 31",
+    "address": "79 Rue Cuvier\n69006 Lyon",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1771440099227",
+    "name": "Reydet Ambre",
+    "contact_name": "Ambre REYDET",
+    "email": "ambre.reydet@allianz.fr",
+    "phone": "+33 6 21 12 13 14",
+    "address": "13 Rue de Vignolles\n21200 Beaune",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1771445959421",
+    "name": "Sham Andrew",
+    "contact_name": "Andrew SHAM",
+    "email": "andrew.sham@vatelmauritius.com",
+    "phone": "+33 6 52 26 34 02",
+    "address": "Place du Monument\n21190 Puligny-Montrachet",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1771439871376",
+    "name": "Cognard Laurent",
+    "contact_name": "Laurent COGNARD",
+    "email": "laurent@domainecognard.fr",
+    "phone": "+33 6 85 13 91 35",
+    "address": "2, Ruelle de la pompe\n71390 BUXY",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1771712825660",
+    "name": "Coudert Cyrille",
+    "contact_name": "Cyrille COUDERT",
+    "email": "ceco@audika.com",
+    "phone": "06 70 76 92 33",
+    "address": "Paris",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1774437065196",
+    "name": "JK Restaurant",
+    "contact_name": "Kevin PONTOGLIO",
+    "email": "contact.jkrestaurant@gmail.com",
+    "phone": "0787330362",
+    "address": "350 Route du Château\n71130 Chassy",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1772735593663",
+    "name": "Client de passage",
+    "contact_name": "",
+    "email": "",
+    "phone": "",
+    "address": "X",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1771712663099",
+    "name": "Chevallier Morgan",
+    "contact_name": "Morgan CHEVALLIER",
+    "email": "chevalliermorgan@hotmail.com",
+    "phone": "0620524796",
+    "address": "125 Route du Fay\n73120 Courchevel",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1772138077574",
+    "name": "Lamoisson David",
+    "contact_name": "David LAMOISSON",
+    "email": "",
+    "phone": "",
+    "address": "Paris",
+    "external_stock": [],
+    "phone_landline": ""
+  },
+  {
+    "id": "cli_1776762376510",
+    "name": "Colin Damien",
+    "contact_name": "Damien COLIN",
+    "email": "",
+    "phone": "0614345704",
+    "address": "21190 St Aubin",
+    "external_stock": [],
+    "phone_landline": ""
+  }
+]

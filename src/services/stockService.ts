@@ -92,3 +92,37 @@ export const recalculateFromHistory = (
     buyingPriceHT: parseFloat(currentCump.toFixed(4))
   };
 };
+
+/**
+ * Inverse précisément l'impact d'une réception d'achat sur un vin :
+ * déduit la quantité reçue et recalcule le CUMP précédent.
+ */
+export const reverseReceptionCump = (
+  currentWine: Wine,
+  canceledQuantity: number,
+  purchasePriceHT: number,
+  shippingCost: number = 0,
+  impactStock: boolean = true
+): { stock: number; buyingPriceHT: number } => {
+  const currentStock = currentWine.stock || 0;
+  const currentCump = currentWine.buyingPriceHT || 0;
+
+  if (impactStock === false) {
+    return { stock: currentStock, buyingPriceHT: currentCump };
+  }
+
+  const nextStock = Math.max(0, currentStock - canceledQuantity);
+  if (nextStock === 0) {
+    return { stock: 0, buyingPriceHT: currentCump };
+  }
+
+  const currentTotalVal = currentStock * currentCump;
+  const addedVal = (canceledQuantity * purchasePriceHT) + shippingCost;
+  const priorTotalVal = Math.max(0, currentTotalVal - addedVal);
+  const nextCump = priorTotalVal > 0 ? priorTotalVal / nextStock : currentCump;
+
+  return {
+    stock: nextStock,
+    buyingPriceHT: parseFloat(nextCump.toFixed(4))
+  };
+};

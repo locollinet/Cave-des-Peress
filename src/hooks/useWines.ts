@@ -1,16 +1,27 @@
 import React from 'react';
-import { Wine, Invoice, StockMovement } from '../../types';
+import { Wine, Invoice, StockMovement, Domain } from '../../types';
 import { api } from '../../api';
 
 export const useWines = (
   setWines: React.Dispatch<React.SetStateAction<Wine[]>>,
   invoices: Invoice[],
-  stockMovements: StockMovement[]
+  stockMovements: StockMovement[],
+  setDomains?: React.Dispatch<React.SetStateAction<Domain[]>>
 ) => {
   const handleAddProduct = async (newWine: Wine, domainName?: string, domainCoef?: number, domainRegion?: string) => {
     try {
       if (domainName) {
-        // ... (domain logic)
+        const newDomain: Domain = {
+          id: newWine.domainId,
+          name: domainName,
+          region: domainRegion || '',
+          coefficient: domainCoef || 1.5,
+          isArchived: false
+        };
+        await api.createDomain(newDomain);
+        if (setDomains) {
+          setDomains(prev => [...prev, newDomain]);
+        }
       }
       await api.createWine(newWine);
       setWines(prev => [...prev, newWine]);

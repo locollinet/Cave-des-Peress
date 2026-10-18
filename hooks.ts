@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wine, Domain, Invoice, StockMovement, Client, CartItem, PurchaseItem, Expense, ExpenseCategory, WineColor, Asset } from './types';
 import { api } from './api';
 import { calculateInvoiceTotals, getBottleEquivalent } from './utils'; // Import du calculateur centralisé
-import { calculateNewCump, recalculateFromHistory } from './src/services/stockService';
+import { calculateNewCump, recalculateFromHistory, reverseReceptionCump } from './src/services/stockService';
 import { useWines } from './src/hooks/useWines';
 import { usePurchases } from './src/hooks/usePurchases';
 import { useInvoices } from './src/hooks/useInvoices';
@@ -67,22 +67,14 @@ export const useAppController = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Pour éviter de tout bloquer si la nouvelle table 'assets' n'existe pas encore chez le client
-      const fetchWines = api.fetchWines().catch(e => { console.error("Wines fetch error:", e); return []; });
-      const fetchDomains = api.fetchDomains().catch(e => { console.error("Domains fetch error:", e); return []; });
-      const fetchClients = api.fetchClients().catch(e => { console.error("Clients fetch error:", e); return []; });
-      const fetchInvoices = api.fetchInvoices().catch(e => { console.error("Invoices fetch error:", e); return []; });
-      const fetchMovements = api.fetchMovements().catch(e => { console.error("Movements fetch error:", e); return []; });
-      const fetchExpenses = api.fetchExpenses().catch(e => { console.error("Expenses fetch error:", e); return []; });
-      const fetchExpenseCategories = api.fetchExpenseCategories().catch(e => { console.error("Categories fetch error:", e); return []; });
-      const fetchAssets = api.fetchAssets().catch(e => { 
-          if (e.code === '42P01') {
-              console.warn("Table 'assets' manquante. Pensez à exécuter le SQL de création.");
-          } else {
-              console.error("Assets fetch error:", e); 
-          }
-          return []; 
-      });
+      const fetchWines = api.fetchWines().catch(e => { console.warn("Wines fetch:", e?.message || e); return []; });
+      const fetchDomains = api.fetchDomains().catch(e => { console.warn("Domains fetch:", e?.message || e); return []; });
+      const fetchClients = api.fetchClients().catch(e => { console.warn("Clients fetch:", e?.message || e); return []; });
+      const fetchInvoices = api.fetchInvoices().catch(e => { console.warn("Invoices fetch:", e?.message || e); return []; });
+      const fetchMovements = api.fetchMovements().catch(e => { console.warn("Movements fetch:", e?.message || e); return []; });
+      const fetchExpenses = api.fetchExpenses().catch(e => { console.warn("Expenses fetch:", e?.message || e); return []; });
+      const fetchExpenseCategories = api.fetchExpenseCategories().catch(e => { console.warn("Categories fetch:", e?.message || e); return []; });
+      const fetchAssets = api.fetchAssets().catch(e => { console.warn("Assets fetch:", e?.message || e); return []; });
 
       const [w, d, c, i, m, e, cat, a] = await Promise.all([
         fetchWines,
@@ -98,7 +90,7 @@ export const useAppController = () => {
       setWines(w);
       setDomains(d);
       setClients(c);
-      setInvoices(i.filter(inv => inv.status !== 'Deleted'));
+      setInvoices(i.filter(inv => (inv.status as string) !== 'Deleted'));
       setStockMovements(m);
       setExpenses(e);
       setAssets(a);
@@ -188,7 +180,7 @@ export const useAppController = () => {
      }
   };
 
-  const handleUpdateReceptionShippingCost = async (provider: string, reference: string, date: string, newShippingCostHT: number) => {
+  const handleUpdateReceptionShippingCost = async (provider: string, reference: string, date: string, newShippingCostHT: number, invoiceId?: string) => {
     try {
       const norm = (val: string | null | undefined) => (val || "").trim().toLowerCase();
       const refMatches = (r1: string | null | undefined, r2: string | null | undefined) => {
@@ -201,11 +193,15 @@ export const useAppController = () => {
       };
 
       // Find the related invoice in a tolerant way
-      let relatedInvoice = invoices.find(i => 
-          (i.type || '').toLowerCase() === 'purchase' && 
-          norm(i.clientName) === norm(provider) && 
-          (refMatches(i.paymentReference, reference) || i.date === date)
-      );
+      let relatedInvoice = invoiceId ? invoices.find(i => i.id === invoiceId) : undefined;
+
+      if (!relatedInvoice) {
+         relatedInvoice = invoices.find(i => 
+             (i.type || '').toLowerCase() === 'purchase' && 
+             norm(i.clientName) === norm(provider) && 
+             (refMatches(i.paymentReference, reference) || i.date === date)
+         );
+      }
 
       // Fallback by provider and date check
       if (!relatedInvoice) {
@@ -577,69 +573,167 @@ export const useAppController = () => {
     }
   };
 
-  const handleCancelReception = async (movementsToCancel: StockMovement[]) => {
+  const handleCancelReception = async (
+    movementsToCancel: StockMovement[], 
+    invoiceId?: string, 
+    context?: { provider?: string; reference?: string; items?: any[]; impactStock?: boolean }
+  ) => {
     try {
       const affectedWineIds = new Set<string>();
       const canceledMovementIds = new Set<string>();
 
+      // 1. Mark and delete explicitly passed movements
       for (const move of movementsToCancel) {
-        if (move.type === 'IN') {
-           canceledMovementIds.add(move.id);
-           affectedWineIds.add(move.wineId);
-           await api.deleteMovement(move.id);
+        if (!move) continue;
+        const moveId = (move as any).movementId || move.id;
+        const wineId = move.wineId || move.id;
+        if (moveId) {
+           canceledMovementIds.add(moveId);
+           await api.deleteMovement(moveId);
+        }
+        if (wineId) {
+           affectedWineIds.add(wineId);
         }
       }
-      
-      // Recalculate CUMP for affected wines
-      const winesToUpdate: Wine[] = [];
-      const allMovementsUpdated = stockMovements.filter(m => !canceledMovementIds.has(m.id));
 
-      for (const wineId of affectedWineIds) {
-        const currentWine = wines.find(w => w.id === wineId);
-        if (!currentWine) continue;
-
-        // Use stockService to recalculate CUMP from history
-        const wineHistory = allMovementsUpdated.filter(m => m.wineId === wineId);
-        const { stock, buyingPriceHT } = recalculateFromHistory(currentWine, wineHistory);
-
-        winesToUpdate.push({
-          ...currentWine,
-          stock: stock,
-          buyingPriceHT: buyingPriceHT
-        });
-      }
-
-      // Update wines in DB
-      for (const w of winesToUpdate) {
-        await api.updateWine(w);
-      }
-
-      // Delete the related purchase invoice if it exists
-      if (movementsToCancel.length > 0) {
+      // 2. Identify and handle the related invoice
+      let targetInvoice = invoiceId ? invoices.find(i => i.id === invoiceId) : undefined;
+      if (!targetInvoice && movementsToCancel.length > 0) {
           const firstMove = movementsToCancel[0];
-          const relatedInvoice = invoices.find(i => 
+          const prov = firstMove.provider || context?.provider;
+          const ref = firstMove.reference || context?.reference;
+          targetInvoice = invoices.find(i => 
               (i.type || '').toLowerCase() === 'purchase' && 
-              i.clientName === firstMove.provider && 
-              i.paymentReference === firstMove.reference
+              ((prov && normalize(i.clientName) === normalize(prov)) || (ref && normalize(i.paymentReference) === normalize(ref)))
           );
-          if (relatedInvoice) {
-              await api.deleteInvoice(relatedInvoice.id);
-          }
       }
 
-      // Refresh local state
+      if (targetInvoice) {
+          // Check invoice items for any movementId
+          for (const it of targetInvoice.items) {
+             const mId = (it as any).movementId;
+             if (mId && !canceledMovementIds.has(mId)) {
+                canceledMovementIds.add(mId);
+                affectedWineIds.add(it.id);
+                await api.deleteMovement(mId);
+             }
+          }
+
+          // Check stock movements for any IN movement tied to this invoice header or ID
+          const normProv = normalize(targetInvoice.clientName);
+          const normRef = normalize(targetInvoice.paymentReference);
+          for (const m of stockMovements) {
+             if (m.type === 'IN' && !canceledMovementIds.has(m.id)) {
+                const matchesHeader = normProv && normRef && normalize(m.provider) === normProv && normalize(m.reference) === normRef && normRef !== 'sans ref';
+                const matchesReason = targetInvoice.id && m.reason && m.reason.includes(targetInvoice.id);
+                if (matchesHeader || matchesReason) {
+                   canceledMovementIds.add(m.id);
+                   affectedWineIds.add(m.wineId);
+                   await api.deleteMovement(m.id);
+                }
+             }
+          }
+
+          // Delete or soft-delete the purchase invoice
+          await api.deleteInvoice(targetInvoice.id);
+      } else if (invoiceId) {
+          await api.deleteInvoice(invoiceId);
+      }
+      
+      // 3. Déduire les quantités et inverser le CUMP pour les vins affectés
+      const processedWineIds = new Set<string>();
+
+      // A. Depuis targetInvoice.items si disponible
+      if (targetInvoice && Array.isArray(targetInvoice.items) && targetInvoice.items.length > 0) {
+        const totalEquivalents = targetInvoice.items.reduce((sum, item) => {
+          const w = wines.find(x => x.id === item.id);
+          return sum + (item.quantity * getBottleEquivalent(w?.format || 'Bouteille (75cl)'));
+        }, 0);
+        const totalShip = targetInvoice.shippingCost || 0;
+
+        for (const it of targetInvoice.items) {
+          const currentWine = wines.find(w => w.id === it.id);
+          if (!currentWine) continue;
+
+          const equiv = it.quantity * getBottleEquivalent(currentWine.format || 'Bouteille (75cl)');
+          const itShip = totalEquivalents > 0 ? (totalShip / totalEquivalents) * equiv : 0;
+          const price = it.buyingPriceHT || (it as any).purchasePriceHT || it.sellingPriceHT || (currentWine.buyingPriceHT || 0);
+
+          const { stock, buyingPriceHT } = reverseReceptionCump(
+            currentWine,
+            it.quantity,
+            price,
+            itShip,
+            context?.impactStock !== false
+          );
+
+          await api.updateWine({ ...currentWine, stock, buyingPriceHT });
+          processedWineIds.add(it.id);
+        }
+      } else if (context?.items && Array.isArray(context.items) && context.items.length > 0) {
+        for (const it of context.items) {
+          const wineId = it.wineId || it.id;
+          const currentWine = wines.find(w => w.id === wineId);
+          if (!currentWine) continue;
+
+          const price = it.price || it.buyingPriceHT || (it as any).purchasePriceHT || (currentWine.buyingPriceHT || 0);
+          const { stock, buyingPriceHT } = reverseReceptionCump(
+            currentWine,
+            it.quantity,
+            price,
+            0,
+            context.impactStock !== false
+          );
+
+          await api.updateWine({ ...currentWine, stock, buyingPriceHT });
+          processedWineIds.add(wineId);
+        }
+      } else {
+        // Fallback pour mouvements directs
+        for (const move of movementsToCancel) {
+          const wineId = move.wineId || (move as any).id;
+          const currentWine = wines.find(w => w.id === wineId);
+          if (!currentWine) continue;
+
+          const { stock, buyingPriceHT } = reverseReceptionCump(
+            currentWine,
+            move.quantity,
+            move.price || currentWine.buyingPriceHT,
+            move.shippingCost || 0,
+            move.impactStock !== false
+          );
+
+          await api.updateWine({ ...currentWine, stock, buyingPriceHT });
+          processedWineIds.add(wineId);
+        }
+      }
+
+      // Pour tout vin affecté résiduel non traité par la formule directe
+      const remainingWineIds = Array.from(affectedWineIds).filter(id => !processedWineIds.has(id));
+      if (remainingWineIds.length > 0) {
+        const allMovementsUpdated = stockMovements.filter(m => !canceledMovementIds.has(m.id));
+        for (const wineId of remainingWineIds) {
+          const currentWine = wines.find(w => w.id === wineId);
+          if (!currentWine) continue;
+          const wineHistory = allMovementsUpdated.filter(m => m.wineId === wineId);
+          const { stock, buyingPriceHT } = recalculateFromHistory(currentWine, wineHistory);
+          await api.updateWine({ ...currentWine, stock, buyingPriceHT });
+        }
+      }
+
+      // 4. Refresh local state
       await fetchData();
       return true;
 
     } catch(e: any) {
-       console.error(e);
-       alert("Erreur annulation réception: " + e.message);
+       console.error("handleCancelReception caught error:", e);
+       alert("Erreur lors de l'annulation de la réception: " + (e.message || e));
        fetchData(); 
        return false;
     }
   };
 
-  const { handleAddProduct, handleUpdateProduct, handleDeleteProduct, handleToggleArchive: originalHandleToggleArchive } = useWines(setWines, invoices, stockMovements);
+  const { handleAddProduct, handleUpdateProduct, handleDeleteProduct, handleToggleArchive: originalHandleToggleArchive } = useWines(setWines, invoices, stockMovements, setDomains);
   const handleToggleArchive = (id: string) => originalHandleToggleArchive(id, wines);
 
   const handleAddDomain = async (newDomain: Domain) => {
@@ -901,57 +995,60 @@ export const useAppController = () => {
         setInvoices(prev => [newInvoice, ...prev]);
 
         // CRITIQUE: Filtrer les prestations (isService) pour ne pas déstocker
-        const mainStockItems = items.filter(i => !i.fromExternalStock && !i.isService);
-        const externalStockItems = items.filter(i => i.fromExternalStock && !i.isService);
+        // ATTENTION : Si type === 'ProForma', aucun déstockage (devis théorique / simulation d'achat)
+        if (type !== 'ProForma') {
+            const mainStockItems = items.filter(i => !i.fromExternalStock && !i.isService);
+            const externalStockItems = items.filter(i => i.fromExternalStock && !i.isService);
 
-        for (const item of mainStockItems) {
-            const currentWine = wines.find(w => w.id === item.id);
-            if (currentWine) {
-                const nextStock = currentWine.stock - item.quantity;
-                await api.updateWineStock(item.id, nextStock);
-                setWines(prev => prev.map(w => w.id === item.id ? { ...w, stock: nextStock } : w));
+            for (const item of mainStockItems) {
+                const currentWine = wines.find(w => w.id === item.id);
+                if (currentWine) {
+                    const nextStock = currentWine.stock - item.quantity;
+                    await api.updateWineStock(item.id, nextStock);
+                    setWines(prev => prev.map(w => w.id === item.id ? { ...w, stock: nextStock } : w));
 
-                await api.createMovement({
-                    id: `mv_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
-                    date: new Date().toISOString(),
-                    wineId: item.id,
-                    wineName: item.name,
-                    type: 'OUT',
-                    quantity: item.quantity,
-                    reason: `Vente ${invoiceId}`
-                });
-            }
-        }
-
-        if (clientId && externalStockItems.length > 0) {
-            const client = clients.find(c => c.id === clientId);
-            if (client) {
-                const newExternalStock = client.externalStock.map(s => {
-                    const soldItem = externalStockItems.find(i => i.id === s.wineId);
-                    if (soldItem) {
-                    return { ...s, quantity: s.quantity - soldItem.quantity };
-                    }
-                    return s;
-                });
-
-                await handleClientUpdate({ ...client, externalStock: newExternalStock });
-                
-                for (const item of externalStockItems) {
                     await api.createMovement({
-                        id: `mv_ext_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
+                        id: `mv_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
                         date: new Date().toISOString(),
                         wineId: item.id,
                         wineName: item.name,
                         type: 'OUT',
                         quantity: item.quantity,
-                        reason: `Vente Stock Déporté ${invoiceId}`
+                        reason: `Vente ${invoiceId}`
                     });
                 }
             }
+
+            if (clientId && externalStockItems.length > 0) {
+                const client = clients.find(c => c.id === clientId);
+                if (client) {
+                    const newExternalStock = client.externalStock.map(s => {
+                        const soldItem = externalStockItems.find(i => i.id === s.wineId);
+                        if (soldItem) {
+                            return { ...s, quantity: Math.max(0, s.quantity - soldItem.quantity) };
+                        }
+                        return s;
+                    });
+
+                    await handleClientUpdate({ ...client, externalStock: newExternalStock });
+                    
+                    for (const item of externalStockItems) {
+                        await api.createMovement({
+                            id: `mv_ext_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
+                            date: new Date().toISOString(),
+                            wineId: item.id,
+                            wineName: item.name,
+                            type: 'OUT',
+                            quantity: item.quantity,
+                            reason: `Vente Stock Déporté ${invoiceId}`
+                        });
+                    }
+                }
+            }
+            
+            const m = await api.fetchMovements();
+            setStockMovements(m);
         }
-        
-        const m = await api.fetchMovements();
-        setStockMovements(m);
         
         return true;
 
@@ -976,7 +1073,7 @@ export const useAppController = () => {
           };
 
           const oldInvoice = invoices.find(i => i.id === invoice.id);
-          if (oldInvoice) {
+          if (oldInvoice && oldInvoice.status !== 'ProForma' && updatedInvoice.status !== 'ProForma') {
               const oldItems = oldInvoice.items.filter(i => !i.isService);
               const newItems = updatedInvoice.items.filter(i => !i.isService);
 
@@ -1121,8 +1218,8 @@ export const useAppController = () => {
       const invoiceToUpdate = invoices.find(i => i.id === id);
 
       // --- LOGIQUE AUTOMATIQUE DE TRANSITION PF -> FAC ---
-      // Si l'ID est 'PF-...' et qu'on Valide ou Paie, on génère un nouveau numéro FAC
-      if (invoiceToUpdate && invoiceToUpdate.id.startsWith('PF') && (newStatus === 'Validated' || newStatus === 'Paid')) {
+      // Si l'ID est 'PF-...' et qu'on Valide ou Paie, on génère un nouveau numéro FAC et on applique le déstockage réel
+      if (invoiceToUpdate && (invoiceToUpdate.id.startsWith('PF') || invoiceToUpdate.status === 'ProForma') && (newStatus === 'Validated' || newStatus === 'Paid')) {
          
          const yearStr = currentYear.toString();
          const prefix = `FAC-${yearStr}`;
@@ -1141,11 +1238,60 @@ export const useAppController = () => {
          const newInvoiceId = `${prefix}-${String(nextNum).padStart(4, '0')}`;
          const todayStr = new Date().toLocaleDateString('fr-FR');
 
-         // 1. Mise à jour en base : Changement d'ID (api.renumberInvoice)
-         // Note: Cette fonction met aussi à jour les mouvements de stock associés !
+         // 1. Déstocker les articles car le ProForma n'avait pas déstocké lors de sa création
+         const mainStockItems = (invoiceToUpdate.items || []).filter(i => !i.fromExternalStock && !i.isService);
+         const externalStockItems = (invoiceToUpdate.items || []).filter(i => i.fromExternalStock && !i.isService);
+
+         for (const item of mainStockItems) {
+             const currentWine = wines.find(w => w.id === item.id);
+             if (currentWine) {
+                 const nextStock = currentWine.stock - item.quantity;
+                 await api.updateWineStock(item.id, nextStock);
+                 setWines(prev => prev.map(w => w.id === item.id ? { ...w, stock: nextStock } : w));
+
+                 await api.createMovement({
+                     id: `mv_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
+                     date: new Date().toISOString(),
+                     wineId: item.id,
+                     wineName: item.name,
+                     type: 'OUT',
+                     quantity: item.quantity,
+                     reason: `Validation ProForma ${newInvoiceId}`
+                 });
+             }
+         }
+
+         if (invoiceToUpdate.clientId && externalStockItems.length > 0) {
+             const client = clients.find(c => c.id === invoiceToUpdate.clientId);
+             if (client) {
+                 const newExternalStock = client.externalStock.map(s => {
+                     const soldItem = externalStockItems.find(i => i.id === s.wineId);
+                     if (soldItem) {
+                         return { ...s, quantity: Math.max(0, s.quantity - soldItem.quantity) };
+                     }
+                     return s;
+                 });
+
+                 await handleClientUpdate({ ...client, externalStock: newExternalStock });
+                 
+                 for (const item of externalStockItems) {
+                     await api.createMovement({
+                         id: `mv_ext_${Date.now()}_${item.id}_${Math.random().toString(36).substr(2, 5)}`,
+                         date: new Date().toISOString(),
+                         wineId: item.id,
+                         wineName: item.name,
+                         type: 'OUT',
+                         quantity: item.quantity,
+                         reason: `Validation ProForma Stock Déporté ${newInvoiceId}`
+                     });
+                 }
+             }
+         }
+
+         // 2. Mise à jour en base : Changement d'ID (api.renumberInvoice)
          await api.renumberInvoice(id, newInvoiceId);
 
-         // 2. Mise à jour en base : Changement de Status + Date sur le NOUVEL ID
+         // 3. Mise à jour en base : Changement de Status + Date sur le NOUVEL ID
          const updatedInvoiceObj: Invoice = {
             ...invoiceToUpdate,
             id: newInvoiceId,
@@ -1163,14 +1309,11 @@ export const useAppController = () => {
              await api.updateInvoiceStatus(newInvoiceId, newStatus);
          }
 
-         // 3. Mise à jour du State Local
+         // 4. Mise à jour du State Local
          setInvoices(prev => prev.map(i => i.id === id ? updatedInvoiceObj : i));
          
-         // 4. Mise à jour locale des mouvements de stock (le backend est déjà fait par renumberInvoice, mais le state local doit suivre)
-         setStockMovements(prev => prev.map(m => ({
-             ...m,
-             reason: m.reason ? m.reason.replace(id, newInvoiceId) : m.reason
-         })));
+         const m = await api.fetchMovements();
+         setStockMovements(m);
 
          return;
       }

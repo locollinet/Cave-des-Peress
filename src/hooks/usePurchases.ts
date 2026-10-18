@@ -13,6 +13,12 @@ export const usePurchases = (
 ) => {
   
   const handleReception = async (provider: string, reference: string, items: PurchaseItem[], date?: string, shippingCostHT: number = 0, impactStock: boolean = true) => {
+    const safeItems = Array.isArray(items) ? items : [];
+    if (safeItems.length === 0) {
+      console.warn("handleReception: No valid items provided", items);
+      return false;
+    }
+
     const movementsToCreate: StockMovement[] = [];
     const winesToUpdate: Wine[] = [];
     
@@ -54,52 +60,85 @@ export const usePurchases = (
     }
     
     // 1. Prepare Data Logic
-    console.log("DEBUG: handleReception started. Provider:", provider, "Reference:", reference, "Items:", items.length, "ImpactStock:", impactStock);
+    console.log("DEBUG: handleReception started. Provider:", provider, "Reference:", reference, "Items:", safeItems.length, "ImpactStock:", impactStock);
     const itemToMovementId = new Map<string, string>();
 
-    const totalEquivalents = items.reduce((sum, item) => {
-        const currentWine = wines.find(w => w.id === item.id);
-        const format = currentWine?.format || 'Bouteille (75cl)';
+    // Ensure we have the most up-to-date wines list (e.g. if newly created via import modal before render update)
+    let currentWinesList = wines;
+    const hasMissingWine = safeItems.some(item => !currentWinesList.some(w => w.id === item.id));
+    if (hasMissingWine) {
+      try {
+        const latestWines = await api.fetchWines();
+        if (latestWines && latestWines.length > 0) {
+          currentWinesList = latestWines;
+        }
+      } catch (err) {
+        console.warn("Could not fetch latest wines from API in handleReception", err);
+      }
+    }
+
+    const totalEquivalents = safeItems.reduce((sum, item) => {
+        const currentWine = currentWinesList.find(w => w.id === item.id);
+        const format = currentWine?.format || (item as any)?.format || 'Bouteille (75cl)';
         return sum + (item.quantity * getBottleEquivalent(format));
     }, 0);
 
-    for (const item of items) {
-      const currentWine = wines.find(w => w.id === item.id);
-      if (currentWine) {
-        const movementId = `mv_in_${crypto.randomUUID()}`;
-        itemToMovementId.set(item.id, movementId);
-
-        const format = currentWine.format || 'Bouteille (75cl)';
-        const itemEquivalents = item.quantity * getBottleEquivalent(format);
-        const itemShippingCost = totalEquivalents > 0 ? (shippingCostHT / totalEquivalents) * itemEquivalents : 0;
-
-        const newMovement: StockMovement = {
-          id: movementId, 
-          date: now,
-          wineId: item.id,
-          wineName: item.name,
-          type: 'IN',
-          quantity: item.quantity,
-          reason: impactStock ? `Réception Fournisseur` : `Rétro-documentation (Sans Impact Stock)`,
-          price: item.purchasePriceHT,
-          vatRate: item.vatRate || 20,
-          tva: (item.purchasePriceHT * item.quantity + itemShippingCost) * ((item.vatRate || 20) / 100),
-          provider: provider.trim(),
-          reference: reference.trim(),
-          paymentStatus: 'Pending',
-          shippingCost: itemShippingCost, 
-          impactStock: impactStock
+    for (const item of safeItems) {
+      let currentWine = currentWinesList.find(w => w.id === item.id);
+      
+      // If wine was just created or missing from cache, reconstruct safe fallback
+      if (!currentWine) {
+        currentWine = {
+          id: item.id,
+          domainId: item.domainId || '',
+          name: item.name,
+          vintage: item.vintage || '',
+          color: (item as any).color || 'Rouge',
+          buyingPriceHT: item.purchasePriceHT || 0,
+          sellingPriceHT: (item as any).sellingPriceHT || item.purchasePriceHT || 0,
+          coefficient: (item as any).coefficient || 1.2,
+          stock: 0,
+          region: (item as any).region || '',
+          subRegion: (item as any).subRegion || '',
+          isArchived: false,
+          format: (item as any).format || 'Bouteille (75cl)',
+          isPreSale: (item as any).isPreSale || false
         };
-        movementsToCreate.push(newMovement);
-
-        const { stock, buyingPriceHT } = calculateNewCump(currentWine, newMovement);
-
-        winesToUpdate.push({
-          ...currentWine,
-          stock: stock,
-          buyingPriceHT: buyingPriceHT
-        });
       }
+
+      const movementId = `mv_in_${crypto.randomUUID()}`;
+      itemToMovementId.set(item.id, movementId);
+
+      const format = currentWine.format || (item as any)?.format || 'Bouteille (75cl)';
+      const itemEquivalents = item.quantity * getBottleEquivalent(format);
+      const itemShippingCost = totalEquivalents > 0 ? (shippingCostHT / totalEquivalents) * itemEquivalents : 0;
+
+      const newMovement: StockMovement = {
+        id: movementId, 
+        date: now,
+        wineId: item.id,
+        wineName: item.name,
+        type: 'IN',
+        quantity: item.quantity,
+        reason: impactStock ? `Réception Fournisseur` : `Rétro-documentation (Sans Impact Stock)`,
+        price: item.purchasePriceHT,
+        vatRate: item.vatRate || 20,
+        tva: (item.purchasePriceHT * item.quantity + itemShippingCost) * ((item.vatRate || 20) / 100),
+        provider: provider.trim(),
+        reference: reference.trim(),
+        paymentStatus: 'Pending',
+        shippingCost: itemShippingCost, 
+        impactStock: impactStock
+      };
+      movementsToCreate.push(newMovement);
+
+      const { stock, buyingPriceHT } = calculateNewCump(currentWine, newMovement);
+
+      winesToUpdate.push({
+        ...currentWine,
+        stock: stock,
+        buyingPriceHT: buyingPriceHT
+      });
     }
 
     // 2. Execution
@@ -112,7 +151,7 @@ export const usePurchases = (
       
       // Create invoice for all purchases
       console.log("DEBUG: Creating invoice for purchase.");
-      const itemsWithPrice = items.map(item => ({
+      const itemsWithPrice = safeItems.map(item => ({
           ...item,
           sellingPriceHT: item.purchasePriceHT,
           isGift: false,

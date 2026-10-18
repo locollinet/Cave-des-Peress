@@ -169,8 +169,15 @@ import HistoricalInvoiceModal from './HistoricalInvoiceModal';
   };
 
   const handleEditClick = (invoice: Invoice) => {
-      // Create a deep copy to edit
-      setInvoiceToEdit(JSON.parse(JSON.stringify(invoice)));
+      // Create a deep copy to edit and normalize vatRate for each item
+      const copy = JSON.parse(JSON.stringify(invoice));
+      if (copy.items && Array.isArray(copy.items)) {
+          copy.items = copy.items.map((item: any) => ({
+              ...item,
+              vatRate: (item.vatRate !== undefined && item.vatRate !== null && !isNaN(Number(item.vatRate))) ? Number(item.vatRate) : 20
+          }));
+      }
+      setInvoiceToEdit(copy);
       setIsEditModalOpen(true);
       setIsRenaming(false);
       setTempId(invoice.id);
@@ -180,13 +187,17 @@ import HistoricalInvoiceModal from './HistoricalInvoiceModal';
       if (invoiceToEdit) {
           const cleanedInvoice = {
               ...invoiceToEdit,
-              items: invoiceToEdit.items.map(item => ({
-                  ...item,
-                  quantity: item.quantity === '' ? 0 : Number(item.quantity) || 0,
-                  sellingPriceHT: item.sellingPriceHT === '' ? 0 : Number(item.sellingPriceHT) || 0,
-                  vatRate: item.vatRate === '' ? 20 : Number(item.vatRate) || 0
-              })),
-              shippingCost: invoiceToEdit.shippingCost === '' ? 0 : Number(invoiceToEdit.shippingCost) || 0
+              items: invoiceToEdit.items.map(item => {
+                  const rawVat = item.vatRate;
+                  const vatRateNum = (rawVat === '' || rawVat === undefined || rawVat === null || isNaN(Number(rawVat))) ? 20 : Number(rawVat);
+                  return {
+                      ...item,
+                      quantity: (item.quantity === '' || item.quantity === undefined || item.quantity === null) ? 0 : Number(item.quantity) || 0,
+                      sellingPriceHT: (item.sellingPriceHT === '' || item.sellingPriceHT === undefined || item.sellingPriceHT === null) ? 0 : Number(item.sellingPriceHT) || 0,
+                      vatRate: vatRateNum
+                  };
+              }),
+              shippingCost: (invoiceToEdit.shippingCost === '' || invoiceToEdit.shippingCost === undefined || invoiceToEdit.shippingCost === null) ? 0 : Number(invoiceToEdit.shippingCost) || 0
           };
 
           const success = await onUpdateInvoice(cleanedInvoice);

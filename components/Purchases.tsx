@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Plus, Trash2, ArrowRight, PackageCheck, AlertCircle, History, X, CheckCircle, Clock, Sparkles, Copy, ExternalLink, AlertTriangle, FileDown, Database } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowRight, PackageCheck, AlertCircle, History, X, CheckCircle, Clock, Sparkles, Copy, ExternalLink, AlertTriangle, FileDown, Database, FileText } from 'lucide-react';
 import { Wine, Domain, PurchaseItem, StockMovement, Invoice } from '../types';
 import { formatCurrency, getColorBadgeClass, getBottleEquivalent } from '../utils';
 import PaymentModal from './PaymentModal';
+import { InvoiceImportModal } from './InvoiceImportModal';
 
 const Purchases = ({ 
   wines, 
@@ -19,7 +20,9 @@ const Purchases = ({
   onUpdateShippingCost,
   onEditDomain,
   onEditWine,
-  onUpdatePayment 
+  onUpdatePayment,
+  onAddDomain,
+  onAddProduct
 }: { 
   wines: Wine[], 
   domains: Domain[], 
@@ -28,13 +31,15 @@ const Purchases = ({
   initialSelection?: string[],
   onClearInitialSelection?: () => void,
   onConfirmPurchase: (provider: string, reference: string, items: PurchaseItem[], date?: string, shippingCostHT?: number, impactStock?: boolean) => Promise<boolean>,
-  onCancelPurchase: (movements: StockMovement[]) => Promise<boolean>,
+  onCancelPurchase: (movements: StockMovement[], invoiceId?: string, context?: { provider?: string; reference?: string; items?: any[]; impactStock?: boolean }) => Promise<boolean>,
   onDeleteInvoice?: (id: string) => Promise<boolean>,
   onUpdatePurchaseItem?: (movements: { id: string, wineId?: string, newPrice?: number, newQuantity?: number, newVatRate?: number, newProvider?: string, newReference?: string }[], context?: { provider: string, reference: string, invoiceId?: string }) => Promise<boolean>,
-  onUpdateShippingCost?: (provider: string, reference: string, date: string, newShippingCostHT: number) => Promise<boolean>,
+  onUpdateShippingCost?: (provider: string, reference: string, date: string, newShippingCostHT: number, invoiceId?: string) => Promise<boolean>,
   onEditDomain: (id: string) => void,
   onEditWine: (id: string | null, initialData?: Partial<Wine>) => void,
-  onUpdatePayment?: (provider: string, reference: string, paymentData: { date: string, method: string }, invoiceId?: string) => Promise<boolean>
+  onUpdatePayment?: (provider: string, reference: string, paymentData: { date: string, method: string }, invoiceId?: string) => Promise<boolean>,
+  onAddDomain?: (domain: Domain) => Promise<void>,
+  onAddProduct?: (wine: Wine, domainName?: string, domainCoef?: number, domainRegion?: string) => Promise<void>
 }) => {
   console.log("Purchases component rendered");
   const [activeTab, setActiveTab] = useState<'new' | 'journal'>('new');
@@ -46,6 +51,10 @@ const Purchases = ({
   const [impactStock, setImpactStock] = useState<boolean>(true);
   const [showZeroWarning, setShowZeroWarning] = useState(false);
   const [cancelWarningEntry, setCancelWarningEntry] = useState<any>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  
+  // Invoice Import Modal State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   // Payment Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -177,13 +186,7 @@ const Purchases = ({
        
        const providerKey = i.clientName || 'Inconnu';
        const refKey = i.paymentReference || 'Sans Ref';
-       const uniqueKey = `${providerKey}_${refKey}`;
-       
-       // Because we are sorted descending, the first one encountered is the newest.
-       // Skip subsequent duplicates.
-       if (groups[uniqueKey]) {
-            return;
-       }
+       const uniqueKey = i.id;
        
        const key = uniqueKey; 
 
@@ -434,13 +437,88 @@ const Purchases = ({
 
   const confirmCancel = async () => {
      if (cancelWarningEntry) {
-        if (onDeleteInvoice && cancelWarningEntry.invoiceId) {
-           await onDeleteInvoice(cancelWarningEntry.invoiceId);
-        } else if (onCancelPurchase) {
-           // Fallback for very old entries without invoiceId
-           await onCancelPurchase(cancelWarningEntry.items);
+        setIsCancelling(true);
+        try {
+           const normProvider = normalize(cancelWarningEntry.originalProvider || cancelWarningEntry.provider);
+           const normRef = normalize(cancelWarningEntry.originalReference || cancelWarningEntry.reference);
+           const matchingMovements: StockMovement[] = [];
+
+           // 1. By movementId or item ID in cancelWarningEntry.items
+           (cancelWarningEntry.items || []).forEach((item: any) => {
+              const targetId = item.movementId || item.id;
+              let move = stockMovements.find(m => m.id === targetId && m.type === 'IN');
+              if (!move) {
+                 move = stockMovements.find(m => 
+                    m.type === 'IN' && 
+                    m.wineId === (item.wineId || item.id) &&
+                    normalize(m.provider) === normProvider &&
+                    normalize(m.reference) === normRef
+                 );
+              }
+              if (move && !matchingMovements.some(m => m.id === move!.id)) {
+                 matchingMovements.push(move);
+              }
+           });
+
+           // 2. Also search all IN movements that match this invoice / provider / reference directly
+           stockMovements.forEach(m => {
+              if (m.type === 'IN') {
+                 const matchesInv = cancelWarningEntry.invoiceId && (m.reason?.includes(cancelWarningEntry.invoiceId) || m.provider === cancelWarningEntry.invoiceId);
+                 const matchesHeader = normalize(m.provider) === normProvider && normalize(m.reference) === normRef && normRef !== 'sans ref' && normRef !== '';
+                 if ((matchesInv || matchesHeader) && !matchingMovements.some(existing => existing.id === m.id)) {
+                    const isWineInEntry = (cancelWarningEntry.items || []).some((it: any) => (it.wineId || it.id) === m.wineId);
+                    if (isWineInEntry) {
+                       matchingMovements.push(m);
+                    }
+                 }
+              }
+           });
+
+           // 3. Fallback: if no stockMovements match, synthesize items with wineId and type IN
+           if (matchingMovements.length === 0 && cancelWarningEntry.items) {
+              cancelWarningEntry.items.forEach((item: any) => {
+                 matchingMovements.push({
+                    id: item.movementId || item.id,
+                    wineId: item.wineId || item.id,
+                    wineName: item.wineName || item.name,
+                    type: 'IN',
+                    quantity: item.quantity,
+                    price: item.price,
+                    provider: cancelWarningEntry.originalProvider || cancelWarningEntry.provider,
+                    reference: cancelWarningEntry.originalReference || cancelWarningEntry.reference,
+                    date: new Date().toISOString()
+                 } as StockMovement);
+              });
+           }
+
+           // L'annulation d'une réception d'achat doit obligatoirement exécuter les deux actions :
+           // 1. Déduire les quantités des vins et supprimer les mouvements de stock IN liés à cette réception
+           // 2. Supprimer ou marquer comme supprimée la facture correspondante
+           if (onCancelPurchase) {
+              const ok = await onCancelPurchase(
+                 matchingMovements,
+                 cancelWarningEntry.invoiceId,
+                 {
+                    provider: cancelWarningEntry.originalProvider || cancelWarningEntry.provider,
+                    reference: cancelWarningEntry.originalReference || cancelWarningEntry.reference,
+                    items: cancelWarningEntry.items,
+                    impactStock: cancelWarningEntry.impactStock
+                 }
+              );
+              if (ok) {
+                 alert("Réception annulée avec succès : les stocks ont été mis à jour et la facture d'achat a été supprimée.");
+              }
+           } else if (onDeleteInvoice && cancelWarningEntry.invoiceId) {
+              await onDeleteInvoice(cancelWarningEntry.invoiceId);
+              alert("Facture d'achat supprimée.");
+           }
+        } catch (err: any) {
+           console.error("Erreur annulation réception:", err);
+           alert("Erreur lors de l'annulation de la réception : " + (err.message || err));
+        } finally {
+           setIsCancelling(false);
+           setCancelWarningEntry(null);
         }
-        setCancelWarningEntry(null);
      }
   };
 
@@ -471,7 +549,7 @@ const Purchases = ({
       const [day, month, year] = entry.date.split('/');
       const isoDate = `${year}-${month}-${day}`;
 
-      const success = await onUpdateShippingCost(entry.provider, entry.reference, entry.date, newShipping);
+      const success = await onUpdateShippingCost(entry.provider, entry.reference, entry.date, newShipping, entry.invoiceId);
       if (success) {
           setEditingShippingCost(null);
       }
@@ -602,25 +680,66 @@ const Purchases = ({
 
   return (
     <div className="relative flex flex-col md:h-[calc(100vh-9rem)] gap-6">
+       <InvoiceImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          wines={wines}
+          domains={domains}
+          onAddDomain={onAddDomain}
+          onAddProduct={onAddProduct}
+          onConfirmPurchaseDirect={async (data) => {
+            const success = await onConfirmPurchase(
+              data.provider,
+              data.reference,
+              data.items,
+              data.purchaseDate,
+              data.shippingCostHT
+            );
+            if (success) {
+              setActiveTab('journal');
+            }
+            return success;
+          }}
+          onApplyToCart={(data) => {
+            setProvider(data.provider);
+            setReference(data.reference);
+            setPurchaseDate(data.purchaseDate);
+            setShippingCostHT(data.shippingCostHT);
+            setPurchaseItems(data.items);
+            setActiveTab('new');
+          }}
+       />
+
        <PaymentModal 
           isOpen={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
           onConfirm={(d, m, r) => handlePaymentConfirm(d, m)} // Ref is optional
        />
 
-       <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-lg w-fit overflow-x-auto max-w-full mb-4">
-          <button 
-             onClick={() => setActiveTab('new')} 
-             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
-          >
-             <PackageCheck size={16} /> Nouvelle Réception
-          </button>
-          <button 
-             onClick={() => setActiveTab('journal')} 
-             className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'journal' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
-          >
-             <History size={16} /> Journal des Achats
-          </button>
+       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+         <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-lg w-fit overflow-x-auto max-w-full">
+            <button 
+               onClick={() => setActiveTab('new')} 
+               className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'new' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+            >
+               <PackageCheck size={16} /> Nouvelle Réception
+            </button>
+            <button 
+               onClick={() => setActiveTab('journal')} 
+               className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'journal' ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+            >
+               <History size={16} /> Journal des Achats
+            </button>
+         </div>
+
+         <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white shadow-sm hover:shadow whitespace-nowrap"
+            title="Importer une facture PDF ou une photo de facture et faire analyser les lignes par Gemini"
+         >
+            <Sparkles size={16} className="text-blue-200" /> 
+            <span>Importer Facture PDF (IA)</span>
+         </button>
        </div>
 
        {activeTab === 'new' ? (
@@ -1415,15 +1534,24 @@ const Purchases = ({
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setCancelWarningEntry(null)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors"
+                  disabled={isCancelling}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   Annuler
                 </button>
                 <button
                   onClick={confirmCancel}
-                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                  disabled={isCancelling}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors shadow-lg shadow-red-200 disabled:opacity-50 flex items-center gap-2"
                 >
-                  Continuer
+                  {isCancelling ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Annulation en cours...
+                    </>
+                  ) : (
+                    'Continuer'
+                  )}
                 </button>
               </div>
             </div>

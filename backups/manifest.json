@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-10-13T15:29:49.673Z",
+  "summary": {
+    "wines": 680,
+    "domains": 203,
+    "clients": 48,
+    "invoices": 221,
+    "stock_movements": 6482,
+    "expenses": 268,
+    "expense_categories": 27,
+    "assets": 10
+  }
+}

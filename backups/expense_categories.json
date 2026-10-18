@@ -1,0 +1,137 @@
+[
+  {
+    "id": "d49888c2-f9af-46dc-b617-742c31b71f48",
+    "label": "Frais de Repas / Restaurant",
+    "created_at": "2026-01-09T15:26:47.287032+00:00"
+  },
+  {
+    "id": "f8c4196e-3906-4153-9af2-4aea82e4f3c0",
+    "label": "Leasing / Véhicule",
+    "created_at": "2026-01-09T15:26:47.357454+00:00"
+  },
+  {
+    "id": "32e23b0c-3f28-427c-995f-ada1c1328fcf",
+    "label": "Carburant / Péage",
+    "created_at": "2026-01-09T15:26:47.417169+00:00"
+  },
+  {
+    "id": "42f00b3d-c701-44a8-a751-9e67b621f1ff",
+    "label": "Téléphonie / Internet",
+    "created_at": "2026-01-09T15:26:47.491048+00:00"
+  },
+  {
+    "id": "71df1950-5415-4dba-b554-6bffa72c573d",
+    "label": "Fournitures de Bureau",
+    "created_at": "2026-01-09T15:26:47.557398+00:00"
+  },
+  {
+    "id": "53239393-c99d-4de8-bba4-f5f66a02ad17",
+    "label": "Assurances",
+    "created_at": "2026-01-09T15:26:47.693472+00:00"
+  },
+  {
+    "id": "6511f508-7144-45e7-b8dd-e3270949f40d",
+    "label": "Honoraires / Prestations Tiers",
+    "created_at": "2026-01-09T15:26:47.757159+00:00"
+  },
+  {
+    "id": "2c96ab2f-aee1-469c-9a57-eea686d38611",
+    "label": "Frais Bancaires",
+    "created_at": "2026-01-09T15:26:47.829346+00:00"
+  },
+  {
+    "id": "70caafa0-38e2-4490-9b0f-5d2d8c598296",
+    "label": "Taxes & Impôts",
+    "created_at": "2026-01-09T15:26:47.88652+00:00"
+  },
+  {
+    "id": "a29919f8-de99-48d0-880b-f0b7c0372cfd",
+    "label": "Boissons",
+    "created_at": "2026-01-16T22:09:20.9996+00:00"
+  },
+  {
+    "id": "e3ca294b-bfb4-4804-8b11-b707abcce1d9",
+    "label": "Consignes",
+    "created_at": "2026-01-16T22:10:47.364102+00:00"
+  },
+  {
+    "id": "20c109a8-e8ce-4190-9fcd-4176d327f596",
+    "label": "Cloud / Web",
+    "created_at": "2026-01-17T10:33:37.646796+00:00"
+  },
+  {
+    "id": "f05c4e7b-b417-4bd6-879a-884bd81fd7b3",
+    "label": "Leasing informatique",
+    "created_at": "2026-01-21T09:15:53.050679+00:00"
+  },
+  {
+    "id": "561f3c19-d7f2-4939-98eb-6d83df135989",
+    "label": "Avoir",
+    "created_at": "2026-01-21T10:15:25.02111+00:00"
+  },
+  {
+    "id": "4aabb444-748e-4cac-8980-89a9294ad39b",
+    "label": "Salaires",
+    "created_at": "2026-02-02T10:23:15.359312+00:00"
+  },
+  {
+    "id": "b46f86c9-3dc3-4eeb-9501-2f7581ad9c16",
+    "label": "Entretien voiture",
+    "created_at": "2026-02-02T19:02:02.018805+00:00"
+  },
+  {
+    "id": "06a11c24-fe0e-4657-8762-3500af89db46",
+    "label": "Transport vin",
+    "created_at": "2026-02-04T20:27:39.049412+00:00"
+  },
+  {
+    "id": "1b58c098-c6e4-42bd-8439-6a9007ea56f3",
+    "label": "Echantillons",
+    "created_at": "2026-02-26T07:39:05.393756+00:00"
+  },
+  {
+    "id": "bf1599cf-0142-488a-b5de-263ba46cf851",
+    "label": "Livres / Documentation",
+    "created_at": "2026-03-15T08:47:54.499963+00:00"
+  },
+  {
+    "id": "d788ccf8-6564-450e-a744-38a2a3c73c09",
+    "label": "Matériel",
+    "created_at": "2026-03-22T15:31:16.018424+00:00"
+  },
+  {
+    "id": "e730f2bd-0750-42e1-9ea5-01de8340f087",
+    "label": "Transport",
+    "created_at": "2026-03-22T15:32:18.929596+00:00"
+  },
+  {
+    "id": "e0380f01-ec94-4629-ac4a-e774f89c5c9c",
+    "label": "Stationnement",
+    "created_at": "2026-03-30T09:39:21.934828+00:00"
+  },
+  {
+    "id": "a8eba29d-7955-4d99-9d8f-203013367ba6",
+    "label": "Alimentaire",
+    "created_at": "2026-04-10T12:45:59.537327+00:00"
+  },
+  {
+    "id": "3057155b-84c6-40de-810e-cb5640a03e06",
+    "label": "Evènement",
+    "created_at": "2026-04-13T07:25:16.543906+00:00"
+  },
+  {
+    "id": "d0e0da14-ec1b-446e-81ba-026257d4c3d7",
+    "label": "Achat Marchandise (Vin)",
+    "created_at": "2026-05-08T07:28:41.363054+00:00"
+  },
+  {
+    "id": "4f300d32-ccf3-4ea4-aedc-ef840c411a34",
+    "label": "Hébergement",
+    "created_at": "2026-06-17T21:18:55.074907+00:00"
+  },
+  {
+    "id": "901cd58c-2e8a-402a-b993-4cf17617f0cf",
+    "label": "Vêtements",
+    "created_at": "2026-08-12T14:49:17.50266+00:00"
+  }
+]

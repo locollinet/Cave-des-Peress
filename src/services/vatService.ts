@@ -65,8 +65,8 @@ export const calculateVatReport = (
 
   // 3. TVA DÉDUCTIBLE (Frais Généraux)
   expenses.forEach(exp => {
-    const d = new Date(exp.date);
-    if (!isNaN(d.getTime()) && d.getFullYear() === selectedYear) {
+    const d = parseSmartDate(exp.date);
+    if (d && !isNaN(d.getTime()) && d.getFullYear() === selectedYear) {
       monthlyData[d.getMonth()].deductibleExpenses += exp.amountTVA;
       monthlyData[d.getMonth()].deductibleExpensesList.push(exp);
     }

@@ -143,25 +143,27 @@ export const isPurchaseInvoice = (invoice: Invoice): boolean => {
 };
 
 /**
- * Parse une date de manière robuste, qu'elle soit au format DD/MM/YYYY ou YYYY-MM-DD
+ * Parse une date de manière robuste, qu'elle soit au format DD/MM/YYYY, YYYY-MM-DD ou ISO.
+ * Retourne toujours un objet Date valide (fallback sur la date courante si invalide).
  */
-export const parseSmartDate = (dateStr: string | undefined): Date | null => {
-  if (!dateStr) return null;
+export const parseSmartDate = (dateStr: string | undefined | null): Date => {
+  if (!dateStr) return new Date();
 
-  // Si c'est déjà un format ISO YYYY-MM-DD
-  if (dateStr.includes('-')) {
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? null : d;
+  if (typeof dateStr === 'string' && dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        const d = new Date(year, month, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
   }
 
-  // Si c'est au format DD/MM/YYYY
-  if (dateStr.includes('/')) {
-    const [day, month, year] = dateStr.split('/').map(Number);
-    const d = new Date(year, month - 1, day);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  return null;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date() : d;
 };
 
 /**
@@ -170,11 +172,17 @@ export const parseSmartDate = (dateStr: string | undefined): Date | null => {
  * et solde la dernière année pour garantir que Total == Prix d'achat.
  */
 export const calculateAssetDepreciationSchedule = (asset: { purchaseDate: string, startDepreciationDate?: string, amountHT: number, durationYears: number }) => {
-  const depreciationStartDate = new Date(asset.startDepreciationDate || asset.purchaseDate);
+  if (!asset) return [];
+  const rawDateStr = asset.startDepreciationDate || asset.purchaseDate;
+  const depreciationStartDate = parseSmartDate(rawDateStr);
   const purchaseYear = depreciationStartDate.getFullYear();
-  const duration = asset.durationYears || 1;
-  const totalHT = asset.amountHT;
+  const duration = Math.max(1, Number(asset.durationYears) || 1);
+  const totalHT = Math.max(0, Number(asset.amountHT) || 0);
   
+  if (totalHT === 0 || isNaN(purchaseYear) || purchaseYear === 0) {
+    return [];
+  }
+
   const schedule: { year: number, amount: number }[] = [];
 
   // Calcul de l'annuité de base (arrondi à l'entier)
@@ -184,9 +192,9 @@ export const calculateAssetDepreciationSchedule = (asset: { purchaseDate: string
   const day = depreciationStartDate.getDate();
   const month = depreciationStartDate.getMonth(); // 0-11
   
-  const remainingDaysInMonth = Math.max(0, 30 - day + 1);
-  const remainingFullMonths = 11 - month;
-  const daysFirstYear = (remainingFullMonths * 30) + remainingDaysInMonth;
+  const remainingDaysInMonth = Math.max(0, 30 - Math.min(30, day) + 1);
+  const remainingFullMonths = Math.max(0, 11 - month);
+  const daysFirstYear = Math.min(360, (remainingFullMonths * 30) + remainingDaysInMonth);
   
   const year1Amount = Math.round(annualBase * (daysFirstYear / 360));
 
@@ -199,7 +207,6 @@ export const calculateAssetDepreciationSchedule = (asset: { purchaseDate: string
     if (i === 0) {
       currentAmount = Math.min(year1Amount, totalHT);
     } else if (cumulative < totalHT) {
-      // Si c'est la "dernière" année théorique ou si le reste est inférieur à une annuité de base
       if (i === duration || (totalHT - cumulative) < annualBase) {
         currentAmount = totalHT - cumulative;
       } else {
@@ -207,7 +214,7 @@ export const calculateAssetDepreciationSchedule = (asset: { purchaseDate: string
       }
     }
 
-    if (currentAmount > 0) {
+    if (currentAmount > 0 && !isNaN(currentAmount)) {
       schedule.push({ year: currentYear, amount: currentAmount });
       cumulative += currentAmount;
     }
@@ -221,24 +228,25 @@ export const calculateAssetDepreciationSchedule = (asset: { purchaseDate: string
 /**
  * Calcule l'amortissement d'une immobilisation pour une année spécifique.
  */
-export const calculateAssetDepreciationForYear = (asset: { purchaseDate: string, amountHT: number, durationYears: number }, targetYear: number): number => {
+export const calculateAssetDepreciationForYear = (asset: { purchaseDate: string, startDepreciationDate?: string, amountHT: number, durationYears: number }, targetYear: number): number => {
+  if (!asset) return 0;
   const schedule = calculateAssetDepreciationSchedule(asset);
   const entry = schedule.find(s => s.year === targetYear);
   return entry ? entry.amount : 0;
 };
 
-export const formatCurrency = (value: number) => 
-  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+export const formatCurrency = (value: number) => {
+  const safeVal = (value === undefined || value === null || isNaN(value)) ? 0 : value;
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(safeVal);
+};
 
 /**
  * Extrait l'année d'une date au format DD/MM/YYYY ou YYYY-MM-DD
  */
-export const parseYear = (dateStr: string | undefined): number => {
+export const parseYear = (dateStr: string | undefined | null): number => {
   if (!dateStr) return 0;
-  if (dateStr.includes('/')) {
-    return parseInt(dateStr.split('/').pop() || '0');
-  }
-  return new Date(dateStr).getFullYear();
+  const d = parseSmartDate(dateStr);
+  return d.getFullYear();
 };
 
 export const getColorBadgeClass = (color: WineColor) => {

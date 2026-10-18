@@ -1,0 +1,186 @@
+{
+  "entities": {
+    "Wine": {
+      "title": "Wine",
+      "description": "Référence de vin ou spiritueux en stock",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "domainId": { "type": "string" },
+        "name": { "type": "string" },
+        "vintage": { "type": "string" },
+        "color": { "type": "string" },
+        "buyingPriceHT": { "type": "number" },
+        "sellingPriceHT": { "type": "number" },
+        "coefficient": { "type": "number" },
+        "stock": { "type": "number" },
+        "region": { "type": "string" },
+        "subRegion": { "type": "string" },
+        "format": { "type": "string" },
+        "isArchived": { "type": "boolean" },
+        "isPreSale": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    },
+    "Domain": {
+      "title": "Domain",
+      "description": "Producteur ou domaine viticole",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "region": { "type": "string" },
+        "coefficient": { "type": "number" },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Compte client ou établissement CHR",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "contactName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "phoneLandline": { "type": "string" },
+        "address": { "type": "string" },
+        "externalStock": { "type": "array" }
+      },
+      "required": ["id", "name"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Facture ou devis de vente / achat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "invoiceDate": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientAddress": { "type": "string" },
+        "items": { "type": "array" },
+        "totalHT": { "type": "number" },
+        "totalTVA": { "type": "number" },
+        "totalTTC": { "type": "number" },
+        "discount": { "type": "number" },
+        "shippingCost": { "type": "number" },
+        "status": { "type": "string" },
+        "type": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "paymentReference": { "type": "string" },
+        "paymentDate": { "type": "string" }
+      },
+      "required": ["id", "date", "status"]
+    },
+    "StockMovement": {
+      "title": "StockMovement",
+      "description": "Mouvement de stock traçable (Entrée, Sortie, Ajustement, Transfert)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "wineId": { "type": "string" },
+        "wineName": { "type": "string" },
+        "type": { "type": "string" },
+        "quantity": { "type": "number" },
+        "reason": { "type": "string" },
+        "price": { "type": "number" },
+        "vatRate": { "type": "number" },
+        "tva": { "type": "number" },
+        "provider": { "type": "string" },
+        "reference": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "paymentDate": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "shippingCost": { "type": "number" },
+        "impactStock": { "type": "boolean" },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "date", "wineId", "type", "quantity"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Dépense ou charge comptable",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "provider": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "amountHT": { "type": "number" },
+        "amountTVA": { "type": "number" },
+        "amountTTC": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "assetId": { "type": "string" }
+      },
+      "required": ["id", "date", "provider", "amountTTC"]
+    },
+    "ExpenseCategory": {
+      "title": "ExpenseCategory",
+      "description": "Catégorie de charge",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" }
+      },
+      "required": ["id", "label"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "Immobilisation ou investissement amortissable",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "purchaseDate": { "type": "string" },
+        "amountHT": { "type": "number" },
+        "vatAmount": { "type": "number" },
+        "durationYears": { "type": "number" },
+        "startDepreciationDate": { "type": "string" },
+        "description": { "type": "string" },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "name", "amountHT"]
+    }
+  },
+  "firestore": {
+    "/wines/{wineId}": {
+      "schema": "Wine",
+      "description": "Collection des bouteilles et cuvées en cave"
+    },
+    "/domains/{domainId}": {
+      "schema": "Domain",
+      "description": "Collection des domaines viticoles"
+    },
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Collection des clients et dépôts-ventes"
+    },
+    "/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Collection des factures et devis"
+    },
+    "/stock_movements/{movementId}": {
+      "schema": "StockMovement",
+      "description": "Collection des mouvements de stock et DRM"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Collection des charges comptables"
+    },
+    "/expense_categories/{categoryId}": {
+      "schema": "ExpenseCategory",
+      "description": "Collection des catégories de charges"
+    },
+    "/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Collection des immobilisations"
+    }
+  }
+}

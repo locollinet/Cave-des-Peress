@@ -380,7 +380,7 @@ const GeneralAccounting = ({
     const debtWinePurchasesHT = totalWinePurchasesHT - paidWinePurchasesHT;
 
     // 3. CHARGES & FRAIS GÉNÉRAUX
-    const yearExpenses = expenses.filter(e => new Date(e.date).getFullYear() === reportYear);
+    const yearExpenses = expenses.filter(e => parseSmartDate(e.date).getFullYear() === reportYear);
     
     // Séparation URSSAF
     const urssafExpenses = yearExpenses.filter(e => e.category.toLowerCase().includes('urssaf') || e.category.toLowerCase().includes('social'));
@@ -886,7 +886,7 @@ const GeneralAccounting = ({
                                     <div className="font-medium text-gray-900">{a.name}</div>
                                     <div className="text-xs text-gray-500">{a.category}</div>
                                  </td>
-                                 <td className="px-4 py-3 text-gray-600">{new Date(a.purchaseDate).toLocaleDateString()}</td>
+                                 <td className="px-4 py-3 text-gray-600">{parseSmartDate(a.purchaseDate).toLocaleDateString('fr-FR')}</td>
                                  <td className="px-4 py-3 text-gray-600">{a.durationYears} ans</td>
                                  <td className="px-4 py-3 text-right font-bold">{formatCurrency(a.amountHT)}</td>
                                  <td className="px-4 py-3 text-right text-indigo-600 font-medium">{formatCurrency(calculateAssetDepreciationForYear(a, reportYear))} en {reportYear}</td>
@@ -1170,7 +1170,7 @@ const GeneralAccounting = ({
                     </div>
                     <div className="flex justify-between">
                       <span>Date d'achat:</span>
-                      <span className="font-bold text-gray-800">{new Date(selectedAssetForSchedule.purchaseDate).toLocaleDateString()}</span>
+                      <span className="font-bold text-gray-800">{parseSmartDate(selectedAssetForSchedule.purchaseDate).toLocaleDateString('fr-FR')}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Durée:</span>

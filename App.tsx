@@ -142,47 +142,51 @@ function App() {
     setTransferSelection([]);
   };
 
+  const totalBottles = data.wines.reduce((acc, w) => acc + (w.stock || 0), 0);
+
   return (
-    <div className="flex min-h-screen bg-gray-50 flex-col md:flex-row">
+    <div className="flex min-h-screen bg-ivory-100 flex-col md:flex-row text-slate-800">
       <Sidebar 
         currentView={currentView} 
         onViewChange={setCurrentView} 
         logo={data.logo}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
+        totalBottles={totalBottles}
       />
 
       {/* Mobile Header */}
-      <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+      <div className="md:hidden bg-white border-b border-lin-200 p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
-          <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-600 hover:text-gray-900 focus:outline-none">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-700 hover:text-slate-900 focus:outline-none">
             <Menu size={24} />
           </button>
-          <span className="font-bold text-gray-800 truncate">Cave des Peress</span>
+          <span className="font-serif font-bold text-bordeaux-950 truncate">La Cave des Pères</span>
         </div>
       </div>
 
-      <main className="md:ml-64 flex-1 p-4 md:p-8 overflow-x-hidden print:ml-0 print:p-0 relative">
-        <header className="flex justify-between items-center mb-6 md:mb-8 print:hidden">
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-              {currentView === 'dashboard' && 'Vue d\'ensemble'}
-              {currentView === 'projection' && 'Pilotage & Analyse Stratégique'}
-              {currentView === 'inventory' && 'Gestion du Stock'}
-              {currentView === 'mobile_inventory' && ''} 
-              {currentView === 'purchases' && 'Achats & Réception'}
-              {currentView === 'domains' && 'Gestion des Domaines'}
-              {currentView === 'sales' && 'Point de Vente'}
-              {currentView === 'clients' && 'Clients & Stocks Déportés'}
-              {currentView === 'accounting' && 'Facturation'}
-              {currentView === 'bilan' && 'Bilan & Gestion'}
-              {currentView === 'vat_report' && 'Bilan TVA & Déclarations'}
-              {currentView === 'wine_menu' && 'Carte des Vins'}
-              {currentView === 'stock_log' && 'Journal des Mouvements de Stock'}
-              {currentView === 'settings' && 'Paramètres'}
-            </h2>
-          </div>
-        </header>
+      <main className="md:ml-64 flex-1 p-3 md:p-6 overflow-x-hidden print:ml-0 print:p-0 relative">
+        {currentView !== 'sales' && (
+          <header className="flex justify-between items-center mb-4 md:mb-6 print:hidden">
+            <div>
+              <h2 className="font-serif text-xl md:text-2xl font-bold text-bordeaux-950">
+                {currentView === 'dashboard' && 'Vue d\'ensemble de la Cave'}
+                {currentView === 'projection' && 'Pilotage & Analyse Stratégique'}
+                {currentView === 'inventory' && 'Gestion & Inventaire des Vins'}
+                {currentView === 'mobile_inventory' && ''} 
+                {currentView === 'purchases' && 'Achats & Réception de Cuvées'}
+                {currentView === 'domains' && 'Domaines Viticoles & Terroirs'}
+                {currentView === 'clients' && 'Comptes Clients & Stocks Déportés'}
+                {currentView === 'accounting' && 'Facturation & Devis'}
+                {currentView === 'bilan' && 'Bilan d\'Exploitation & Trésorerie'}
+                {currentView === 'vat_report' && 'Bilan TVA & Déclarations Douanières'}
+                {currentView === 'wine_menu' && 'Carte des Vins'}
+                {currentView === 'stock_log' && 'Journal des Mouvements de Stock'}
+                {currentView === 'settings' && 'Paramètres'}
+              </h2>
+            </div>
+          </header>
+        )}
 
         {currentView === 'dashboard' && (
           <Dashboard 
@@ -263,6 +267,8 @@ function App() {
             onEditDomain={handleEditDomain}
             onEditWine={handleEditWine}
             onUpdatePayment={actions.handleUpdatePurchasePayment}
+            onAddDomain={actions.handleAddDomain}
+            onAddProduct={actions.handleAddProduct}
           />
         )}
         {currentView === 'domains' && (

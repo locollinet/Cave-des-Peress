@@ -41,8 +41,9 @@ const Clients = ({
   const [showStockModal, setShowStockModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'stock' | 'invoices'>('stock');
 
-  // Modal Facturation Globale
+  // Modal Facturation / Pro Forma Déporté
   const [isGlobalBillingOpen, setIsGlobalBillingOpen] = useState(false);
+  const [billingDocType, setBillingDocType] = useState<'ProForma' | 'Invoice'>('ProForma');
   const [billingQuantities, setBillingQuantities] = useState<Record<string, number>>({});
   const [billingPrices, setBillingPrices] = useState<Record<string, number>>({});
   
@@ -51,6 +52,20 @@ const Clients = ({
   const [transferQty, setTransferQty] = useState(1);
   const [transferSearch, setTransferSearch] = useState('');
   const [selectedConsignedWines, setSelectedConsignedWines] = useState<Set<string>>(new Set());
+
+  const modalTotals = useMemo(() => {
+    let totalHT = 0;
+    let totalBottles = 0;
+    Object.entries(billingQuantities).forEach(([wineId, qty]) => {
+      const q = (qty as number) || 0;
+      const p = billingPrices[wineId] || 0;
+      totalHT += q * p;
+      totalBottles += q;
+    });
+    const totalTVA = totalHT * 0.20;
+    const totalTTC = totalHT + totalTVA;
+    return { totalHT, totalTVA, totalTTC, totalBottles };
+  }, [billingQuantities, billingPrices]);
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => 
@@ -97,15 +112,17 @@ const Clients = ({
     }
   };
 
-  const openGlobalBilling = () => {
+  const openGlobalBilling = (type: 'ProForma' | 'Invoice' = 'ProForma') => {
     if (!selectedClient) return;
+    setBillingDocType(type);
     const initialQty: Record<string, number> = {};
     const initialPrices: Record<string, number> = {};
     
     (selectedClient?.externalStock || []).forEach(item => {
         if (selectedConsignedWines.size > 0 && !selectedConsignedWines.has(item.wineId)) return;
         
-        initialQty[item.wineId] = 0; // Default to 0 to force user input (relevé de conso)
+        // In ProForma simulation mode, default to full available stock for easy preview, or 0 if consumption invoice
+        initialQty[item.wineId] = type === 'ProForma' ? item.quantity : 0;
         const wine = wines.find(w => w.id === item.wineId);
         const domain = wine ? domains.find(d => d.id === wine.domainId) : undefined;
         if (wine) {
@@ -142,13 +159,22 @@ const Clients = ({
       setBillingQuantities(maxQty);
   };
 
+  const setAllToZero = () => {
+      if (!selectedClient) return;
+      const zeroQty: Record<string, number> = {};
+      (selectedClient?.externalStock || []).forEach(item => {
+          if (selectedConsignedWines.size > 0 && !selectedConsignedWines.has(item.wineId)) return;
+          zeroQty[item.wineId] = 0;
+      });
+      setBillingQuantities(zeroQty);
+  };
+
   const confirmGlobalBill = () => {
     if (!selectedClient) return;
     
     const itemsToBill: CartItem[] = [];
     
     Object.entries(billingQuantities).forEach(([wineId, qty]) => {
-        // Explicitly cast qty to number to avoid TypeScript 'unknown' errors
         const quantity = qty as number;
         if (quantity > 0) {
             const wine = wines.find(w => w.id === wineId);
@@ -156,19 +182,20 @@ const Clients = ({
                 itemsToBill.push({
                     ...wine,
                     quantity: quantity,
-                    sellingPriceHT: billingPrices[wineId], // Use modified price
-                    fromExternalStock: true
+                    sellingPriceHT: billingPrices[wineId] !== undefined ? billingPrices[wineId] : wine.sellingPriceHT,
+                    fromExternalStock: true,
+                    vatRate: 20
                 });
             }
         }
     });
 
     if (itemsToBill.length === 0) {
-        alert("Aucune quantité saisie à facturer.");
+        alert("Aucune quantité sélectionnée.");
         return;
     }
 
-    onCreateInvoice(selectedClient.name, itemsToBill, 'Invoice', selectedClient.id);
+    onCreateInvoice(selectedClient.name, itemsToBill, billingDocType, selectedClient.id);
     setIsGlobalBillingOpen(false);
   };
 
@@ -369,16 +396,25 @@ const Clients = ({
                       <Trash2 size={16} /> Supprimer Sélection
                     </button>
                   )}
-                    <button 
-                    onClick={openGlobalBilling}
+                  <button 
+                    onClick={() => openGlobalBilling('ProForma')}
                     disabled={(selectedClient?.externalStock || []).length === 0}
-                    className="px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                    title="Générer un devis / pro forma théorique de simulation (aucun impact sur le stock)"
+                  >
+                    <FileText size={16} /> {selectedConsignedWines.size > 0 ? 'Pro Forma Sélection' : 'Pro Forma Théorique'}
+                  </button>
+                  <button 
+                    onClick={() => openGlobalBilling('Invoice')}
+                    disabled={(selectedClient?.externalStock || []).length === 0}
+                    className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                    title="Facturer les consommations réelles (décrémente le stock déporté)"
                   >
                     <FileText size={16} /> {selectedConsignedWines.size > 0 ? 'Facturer Sélection' : 'Facturer Consommations'}
                   </button>
                   <button 
                     onClick={() => setShowStockModal(true)}
-                    className="px-3 py-1.5 bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg text-sm font-medium flex items-center gap-2"
+                    className="px-3 py-1.5 bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg text-sm font-medium flex items-center gap-1.5"
                   >
                     <Plus size={16} /> Nouveau Dépôt
                   </button>
@@ -712,28 +748,98 @@ const Clients = ({
         </div>
       )}
 
-      {/* Modal Facturation Globale (Consommations) */}
+      {/* Modal Facturation / Pro Forma Stock Déporté */}
       {isGlobalBillingOpen && selectedClient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-              <h3 className="text-lg font-semibold text-gray-800">Facturer les consommations : {selectedClient.name}</h3>
-              <button onClick={() => setIsGlobalBillingOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${billingDocType === 'ProForma' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {billingDocType === 'ProForma' ? 'Devis / Pro Forma Théorique' : 'Facturation des Consommations'}
+                  </h3>
+                  <p className="text-xs text-gray-500">Client : <span className="font-semibold text-gray-700">{selectedClient.name}</span></p>
+                </div>
+              </div>
+
+              {/* Toggle ProForma vs Facture */}
+              <div className="flex items-center bg-gray-200 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setBillingDocType('ProForma')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    billingDocType === 'ProForma'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📄 Pro Forma (Simulation)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingDocType('Invoice')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    billingDocType === 'Invoice'
+                      ? 'bg-green-600 text-white shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  🧾 Facture (Consommation)
+                </button>
+              </div>
+
+              <button onClick={() => setIsGlobalBillingOpen(false)} className="text-gray-400 hover:text-gray-600 p-1">
                 <X size={20} />
               </button>
             </div>
             
-            <div className="p-4 bg-yellow-50 border-b border-yellow-100 text-sm text-yellow-800">
-               Saisissez les quantités consommées (vendues) pour chaque référence. Le prix unitaire est modifiable ici sans affecter le catalogue.
-            </div>
+            {/* Explicative banner based on mode */}
+            {billingDocType === 'ProForma' ? (
+              <div className="p-3.5 bg-blue-50 border-b border-blue-100 text-xs text-blue-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold bg-blue-200 text-blue-800 px-2 py-0.5 rounded text-[11px]">Simulation</span>
+                  <span>Ce document prévisionnel (PF-...) permet au client de connaître le chiffrage exact de ses stocks. <strong>Aucun stock ne sera décrémenté.</strong></span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={setAllToMax} className="text-xs font-medium text-blue-700 hover:underline">
+                    Tout inclure ({selectedClient.externalStock?.length || 0})
+                  </button>
+                  <span>•</span>
+                  <button onClick={setAllToZero} className="text-xs font-medium text-blue-700 hover:underline">
+                    Effacer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 bg-amber-50 border-b border-amber-100 text-xs text-amber-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded text-[11px]">Déstockage réel</span>
+                  <span>Saisissez les consommations réelles. La validation générera la facture finale et <strong>décrémentera le stock déporté</strong> du client.</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={setAllToMax} className="text-xs font-medium text-amber-800 hover:underline">
+                    Tout facturer (Vider stock)
+                  </button>
+                  <span>•</span>
+                  <button onClick={setAllToZero} className="text-xs font-medium text-amber-800 hover:underline">
+                    Effacer
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto overflow-x-auto">
                <table className="w-full text-left min-w-[800px]">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
                      <tr>
                         <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Vin / Domaine</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">En Stock</th>
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Quantité à Facturer</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">En Stock Déporté</th>
+                        <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-center">
+                          {billingDocType === 'ProForma' ? 'Qté dans la Simulation' : 'Quantité Consommée'}
+                        </th>
                         <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Prix Unit. HT</th>
                         <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Total Ligne HT</th>
                      </tr>
@@ -756,7 +862,7 @@ const Clients = ({
                         if (!wine) return null;
 
                         return (
-                           <tr key={item.wineId} className={qtyToBill > 0 ? 'bg-green-50' : 'hover:bg-gray-50'}>
+                           <tr key={item.wineId} className={qtyToBill > 0 ? (billingDocType === 'ProForma' ? 'bg-blue-50/50' : 'bg-green-50/50') : 'hover:bg-gray-50'}>
                               <td className="px-6 py-3">
                                  <div 
                                     className="font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
@@ -780,18 +886,20 @@ const Clients = ({
                               </td>
                               <td className="px-6 py-3 text-center">
                                  <span className="inline-block px-2 py-1 bg-gray-100 rounded text-gray-700 font-medium text-sm">
-                                    {item.quantity}
+                                    {item.quantity} btles
                                  </span>
                               </td>
                               <td className="px-6 py-3 text-center">
                                  <div className="flex items-center justify-center gap-2">
                                     <button 
                                        onClick={() => handleBillingQtyChange(item.wineId, Math.max(0, qtyToBill - 1))}
-                                       className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
+                                       className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-700 font-bold"
                                     >-</button>
                                     <input 
                                        type="number" 
-                                       className="w-16 text-center border border-gray-300 rounded py-1 font-bold text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
+                                       className={`w-16 text-center border rounded py-1 font-bold text-gray-900 outline-none ${
+                                         billingDocType === 'ProForma' ? 'focus:ring-2 focus:ring-blue-500 border-gray-300' : 'focus:ring-2 focus:ring-green-500 border-gray-300'
+                                       }`}
                                        min="0"
                                        max={item.quantity}
                                        value={qtyToBill}
@@ -799,7 +907,7 @@ const Clients = ({
                                     />
                                     <button 
                                        onClick={() => handleBillingQtyChange(item.wineId, Math.min(item.quantity, qtyToBill + 1))}
-                                       className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
+                                       className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-700 font-bold"
                                     >+</button>
                                  </div>
                               </td>
@@ -825,19 +933,49 @@ const Clients = ({
                </table>
             </div>
 
-            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
-               <button 
-                  onClick={setAllToMax}
-                  className="text-sm text-blue-600 hover:text-blue-800 underline"
-               >
-                  Tout sélectionner (Vider le stock)
-               </button>
-               <button 
-                 onClick={confirmGlobalBill}
-                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2 shadow-sm"
-               >
-                 <FileText size={18} /> Générer Facture Globale
-               </button>
+            {/* Bottom summary and action */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+               <div className="flex items-center gap-6">
+                 <div className="text-xs text-gray-500">
+                   Sélection : <strong className="text-gray-800 font-bold">{modalTotals.totalBottles} bouteilles</strong>
+                 </div>
+                 <div className="text-xs text-gray-500">
+                   Total HT : <strong className="text-gray-900 font-bold text-sm">{formatCurrency(modalTotals.totalHT)}</strong>
+                 </div>
+                 <div className="text-xs text-gray-500">
+                   TVA (20%) : <strong className="text-gray-700 font-semibold">{formatCurrency(modalTotals.totalTVA)}</strong>
+                 </div>
+                 <div className="text-sm font-bold text-gray-900 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-2xs">
+                   Total TTC : <span className="text-blue-700">{formatCurrency(modalTotals.totalTTC)}</span>
+                 </div>
+               </div>
+
+               <div className="flex items-center gap-3">
+                 <button
+                   type="button"
+                   onClick={() => setIsGlobalBillingOpen(false)}
+                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-sm"
+                 >
+                   Annuler
+                 </button>
+                 {billingDocType === 'ProForma' ? (
+                   <button 
+                     onClick={confirmGlobalBill}
+                     disabled={modalTotals.totalBottles === 0}
+                     className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center gap-2 shadow-sm"
+                   >
+                     <FileText size={16} /> Générer Devis Pro Forma (PF)
+                   </button>
+                 ) : (
+                   <button 
+                     onClick={confirmGlobalBill}
+                     disabled={modalTotals.totalBottles === 0}
+                     className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center gap-2 shadow-sm"
+                   >
+                     <FileText size={16} /> Générer Facture Réelle (FAC)
+                   </button>
+                 )}
+               </div>
             </div>
           </div>
         </div>
