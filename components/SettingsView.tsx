@@ -2,6 +2,7 @@
 import React, { useRef } from 'react';
 import { ImageIcon, Save, Upload, AlertTriangle, RotateCcw } from 'lucide-react';
 import { Wine, Domain, Invoice, StockMovement } from '../types';
+import { DEFAULT_LOGO_URL } from '../utils';
 
 const SettingsView = ({
   wines,
@@ -68,12 +69,12 @@ const SettingsView = ({
            <ImageIcon size={20} /> Personnalisation
          </h2>
          <div className="p-4 border border-gray-100 bg-gray-50 rounded-lg flex items-center gap-6">
-            <div className="shrink-0 w-32 h-32 bg-white rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden">
-               {logo ? (
-                 <img src={logo} alt="Logo actuel" className="w-full h-full object-contain" />
-               ) : (
-                 <span className="text-xs text-gray-400 text-center px-2">Logo par défaut actif</span>
-               )}
+            <div className="shrink-0 w-36 h-24 bg-white rounded-lg border border-gray-200 flex items-center justify-center p-2 overflow-hidden shadow-xs">
+               <img 
+                 src={logo && logo.length > 50 ? logo : DEFAULT_LOGO_URL} 
+                 alt="Logo de l'entreprise" 
+                 className="w-full h-full object-contain" 
+               />
             </div>
             <div className="flex-1">
                <h4 className="font-semibold text-gray-900 mb-1">Logo de l'entreprise</h4>

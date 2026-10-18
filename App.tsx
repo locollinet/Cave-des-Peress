@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAppController } from './hooks';
 import { Domain, Wine, Client } from './types';
 import { Menu } from 'lucide-react';
+import { DEFAULT_LOGO_URL } from './utils';
 
 // Components
 import Sidebar from './components/Sidebar';
@@ -152,15 +153,18 @@ function App() {
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Mobile Header - Bandeau sombre cohérent */}
-      <div className="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-10 shadow-sm text-white">
+      {/* Mobile Header - Bandeau sombre avec logo officiel */}
+      <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between sticky top-0 z-10 shadow-sm text-white">
         <div className="flex items-center gap-3">
-          <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-300 hover:text-white focus:outline-none p-1 rounded-md hover:bg-slate-800 transition-colors">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-300 hover:text-white focus:outline-none p-1.5 rounded-md hover:bg-slate-800 transition-colors" aria-label="Menu">
             <Menu size={22} />
           </button>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-700 shadow-sm shadow-red-500/50"></span>
-            <span className="font-bold text-white truncate text-base tracking-tight">La Cave des Pères</span>
+          <div className="bg-white rounded-md px-2 py-1 flex items-center justify-center shadow-sm">
+            <img 
+              src={data.logo && data.logo.length > 50 ? data.logo : DEFAULT_LOGO_URL} 
+              alt="La Cave des PERESS" 
+              className="h-8 w-auto max-w-[150px] object-contain"
+            />
           </div>
         </div>
       </div>
